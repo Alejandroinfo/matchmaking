@@ -132,7 +132,6 @@ export default function GameRoom() {
           isHost={isHost}
           sortedPlayers={sortedPlayers}
           myRoles={myRoles}
-          myPersonality={myPersonality}
         />
       )}
     </>

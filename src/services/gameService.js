@@ -185,7 +185,6 @@ export async function submitSoulmateSelection(roomCode, playerId, postorId) {
   const allSelected = playerIds.every(pid => data.soulmateSelections?.[pid] != null)
 
   if (allSelected) {
-    // Compute soulmate compatibility (own points only, no role points)
     const soulmateResults = {}
     playerIds.forEach(pid => {
       const { ownPoints, matches } = computeCompatibility(
@@ -195,7 +194,6 @@ export async function submitSoulmateSelection(roomCode, playerId, postorId) {
       soulmateResults[pid] = { ownPoints, matches, postorId: data.soulmateSelections[pid] }
     })
 
-    // Update scores with soulmate points
     const updatedPlayers = { ...data.players }
     playerIds.forEach(pid => {
       updatedPlayers[pid] = {
