@@ -1,9 +1,6 @@
 import { db } from '../firebase'
 import { doc, setDoc, updateDoc, getDoc, onSnapshot, serverTimestamp } from 'firebase/firestore'
-import {
-  dealPersonalities, assignRoles, dealHands,
-  computeCompatibility, computeRolePoints
-} from '../logic/gameLogic'
+import { dealPersonalities, dealHands, computeCompatibility, generatePostors } from '../logic/gameLogic'
 
 export function generateRoomCode() {
   return Math.random().toString(36).substring(2, 7).toUpperCase()
@@ -24,15 +21,14 @@ export async function createRoom(playerName, settings) {
   await setDoc(doc(db, 'games', roomCode), {
     hostId: playerId,
     status: 'lobby',
-    settings: { totalRounds: settings.totalRounds ?? 4 },
+    settings: { totalRounds: 4, numOptions: 6 },
     round: 0,
     phase: null,
     players: { [playerId]: { name: playerName, score: 0, joinOrder: 0 } },
     personalities: {},
-    roles: {},
     hands: {},
     recommendations: {},
-    selections: {},
+    swipeDecisions: {},
     roundResults: {},
     roundHistory: [],
     createdAt: serverTimestamp(),
@@ -67,25 +63,25 @@ export async function startGame(roomCode) {
   const playerIds = Object.keys(data.players)
   if (playerIds.length < 2) throw new Error('Necesitas al menos 2 jugadores')
 
-  const personalities = dealPersonalities(playerIds)
-  const roles = assignRoles(playerIds)
-  const hands = dealHands(playerIds)
+  const numOptions = data.settings?.numOptions ?? 6
+  const personalities = dealPersonalities(playerIds, numOptions)
+  const hands = dealHands(playerIds, numOptions)
 
   await updateDoc(ref, {
     status: 'playing',
     round: 1,
     phase: 'recommendation',
     personalities,
-    roles,
     hands,
     recommendations: {},
-    selections: {},
+    swipeDecisions: {},
     roundResults: {},
     roundHistory: [],
   })
 }
 
 export async function submitRecommendations(roomCode, playerId, recommendations) {
+  // recommendations: { [toId]: postorObject }
   const ref = doc(db, 'games', roomCode)
   await updateDoc(ref, { [`recommendations.${playerId}`]: recommendations })
 
@@ -95,34 +91,75 @@ export async function submitRecommendations(roomCode, playerId, recommendations)
   const allSubmitted = playerIds.every(pid => data.recommendations?.[pid])
 
   if (allSubmitted) {
-    await updateDoc(ref, { phase: 'selection' })
+    await updateDoc(ref, { phase: 'swipe' })
   }
 }
 
-export async function submitSelection(roomCode, playerId, postorId) {
+export async function submitSwipes(roomCode, playerId, swipeDecisions, selfDatePostor = null) {
+  // swipeDecisions: { [postorUid]: true | false }
+  // selfDatePostor: postor object from remaining hand (optional, no recommender points)
   const ref = doc(db, 'games', roomCode)
-  await updateDoc(ref, { [`selections.${playerId}`]: postorId })
+  await updateDoc(ref, {
+    [`swipeDecisions.${playerId}`]: swipeDecisions,
+    [`selfDates.${playerId}`]: selfDatePostor ?? null,
+  })
 
   const snap = await getDoc(ref)
   const data = snap.data()
   const playerIds = Object.keys(data.players)
-  const allSelected = playerIds.every(pid => data.selections?.[pid] != null)
 
-  if (allSelected) {
+  // Check if all players have swiped on all their received recommendations
+  const allDone = playerIds.every(pid => {
+    const recsReceived = playerIds.filter(fromId => fromId !== pid && data.recommendations?.[fromId]?.[pid])
+    const pidSwipes = data.swipeDecisions?.[pid] ?? {}
+    return recsReceived.every(fromId => {
+      const postor = data.recommendations[fromId][pid]
+      return pidSwipes[postor.uid] != null
+    })
+  })
+
+  if (allDone) {
+    // Compute round results
     const roundResults = {}
     playerIds.forEach(pid => {
-      const { ownPoints, matches } = computeCompatibility(
-        data.personalities[pid],
-        data.selections[pid]
-      )
-      roundResults[pid] = { ownPoints, matches, postorId: data.selections[pid] }
-    })
-    playerIds.forEach(pid => {
-      const rolePoints = computeRolePoints(pid, roundResults, data.roles)
-      roundResults[pid].rolePoints = rolePoints
-      roundResults[pid].totalPoints = roundResults[pid].ownPoints + rolePoints
+      const acceptedDates = []
+
+      // Accepted recommendations
+      playerIds.filter(fromId => fromId !== pid).forEach(fromId => {
+        const postor = data.recommendations?.[fromId]?.[pid]
+        if (!postor) return
+        const accepted = data.swipeDecisions?.[pid]?.[postor.uid] === true
+        if (accepted) {
+          const { ownPoints, matches } = computeCompatibility(data.personalities[pid], postor)
+          acceptedDates.push({ postor, fromId, ownPoints, matches })
+        }
+      })
+
+      // Self-date (no fromId = no recommender gets points)
+      const selfDate = data.selfDates?.[pid]
+      if (selfDate) {
+        const { ownPoints, matches } = computeCompatibility(data.personalities[pid], selfDate)
+        acceptedDates.push({ postor: selfDate, fromId: null, ownPoints, matches })
+      }
+
+      const totalOwnPoints = acceptedDates.reduce((s, d) => s + d.ownPoints, 0)
+      roundResults[pid] = { acceptedDates, totalOwnPoints }
     })
 
+    // Recommender points: +1 per accepted card
+    playerIds.forEach(pid => {
+      let recPoints = 0
+      playerIds.filter(toId => toId !== pid).forEach(toId => {
+        const postor = data.recommendations?.[pid]?.[toId]
+        if (!postor) return
+        const accepted = data.swipeDecisions?.[toId]?.[postor.uid] === true
+        if (accepted) recPoints++
+      })
+      roundResults[pid].recPoints = recPoints
+      roundResults[pid].totalPoints = roundResults[pid].totalOwnPoints + recPoints
+    })
+
+    // Update scores
     const updatedPlayers = { ...data.players }
     playerIds.forEach(pid => {
       updatedPlayers[pid] = {
@@ -131,34 +168,27 @@ export async function submitSelection(roomCode, playerId, postorId) {
       }
     })
 
-    // Build available options per player (recs received + remaining hand)
-    const availableOptions = {}
+    // Compute remaining hand cards (for soulmate later)
+    const remainingHands = {}
     playerIds.forEach(pid => {
-      const recsReceived = playerIds
-        .filter(fromId => fromId !== pid && data.recommendations?.[fromId]?.[pid] != null)
-        .map(fromId => ({ postorId: data.recommendations[fromId][pid], fromPlayerId: fromId }))
-
-      const usedIds = new Set(Object.values(data.recommendations?.[pid] ?? {}))
-      const remainingHand = (data.hands?.[pid] ?? [])
-        .filter(id => !usedIds.has(id))
-        .map(id => ({ postorId: id, fromPlayerId: null }))
-
-      availableOptions[pid] = [...recsReceived, ...remainingHand]
-        .filter(opt => opt.postorId !== data.selections[pid]) // exclude chosen
+      const usedUids = new Set(
+        playerIds.filter(toId => toId !== pid).map(toId => data.recommendations?.[pid]?.[toId]?.uid).filter(Boolean)
+      )
+      remainingHands[pid] = (data.hands?.[pid] ?? []).find(p => !usedUids.has(p.uid)) ?? null
     })
 
-    // Append to history including recommendations and available options
     const roundHistory = [...(data.roundHistory ?? []), {
       round: data.round,
       results: roundResults,
-      recommendations: data.recommendations ?? {},
-      availableOptions,
+      swipeDecisions: data.swipeDecisions,
+      recommendations: data.recommendations,
     }]
 
     await updateDoc(ref, {
       phase: 'reveal',
       roundResults,
       players: updatedPlayers,
+      remainingHands,
       roundHistory,
     })
   }
@@ -171,31 +201,31 @@ export async function nextRound(roomCode) {
   const nextRound = data.round + 1
 
   if (nextRound > data.settings.totalRounds) {
-    // Go to soulmate phase instead of ending directly
     await updateDoc(ref, {
       phase: 'soulmate',
-      soulmateHands: data.hands, // preserve current hands for soulmate selection
       soulmateSelections: {},
     })
     return
   }
 
   const playerIds = Object.keys(data.players)
-  const hands = dealHands(playerIds)
+  const numOptions = data.settings?.numOptions ?? 6
+  const hands = dealHands(playerIds, numOptions)
 
   await updateDoc(ref, {
     round: nextRound,
     phase: 'recommendation',
     hands,
     recommendations: {},
-    selections: {},
+    swipeDecisions: {},
     roundResults: {},
   })
 }
 
-export async function submitSoulmateSelection(roomCode, playerId, postorId) {
+export async function submitSoulmateSelection(roomCode, playerId, description) {
+  // description: { [attributeName]: value } — player's best guess of their own personality
   const ref = doc(db, 'games', roomCode)
-  await updateDoc(ref, { [`soulmateSelections.${playerId}`]: postorId })
+  await updateDoc(ref, { [`soulmateSelections.${playerId}`]: description })
 
   const snap = await getDoc(ref)
   const data = snap.data()
@@ -205,11 +235,9 @@ export async function submitSoulmateSelection(roomCode, playerId, postorId) {
   if (allSelected) {
     const soulmateResults = {}
     playerIds.forEach(pid => {
-      const { ownPoints, matches } = computeCompatibility(
-        data.personalities[pid],
-        data.soulmateSelections[pid]
-      )
-      soulmateResults[pid] = { ownPoints, matches, postorId: data.soulmateSelections[pid] }
+      const description = data.soulmateSelections[pid]
+      const { ownPoints, matches } = computeCompatibility(data.personalities[pid], description)
+      soulmateResults[pid] = { ownPoints: ownPoints * 2, matches, description }
     })
 
     const updatedPlayers = { ...data.players }

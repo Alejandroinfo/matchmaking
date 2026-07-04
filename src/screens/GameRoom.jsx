@@ -3,7 +3,7 @@ import { useGame } from '../hooks/useGame'
 import { JoinScreen } from './HomeScreen'
 import LobbyScreen from './LobbyScreen'
 import RecommendationScreen from './RecommendationScreen'
-import SelectionScreen from './SelectionScreen'
+import SwipeScreen from './SwipeScreen'
 import RevealScreen from './RevealScreen'
 import SoulmateScreen from './SoulmateScreen'
 import EndScreen from './EndScreen'
@@ -12,8 +12,8 @@ export default function GameRoom() {
   const { roomCode } = useParams()
   const {
     game, loading, playerId, isHost, myPersonality,
-    myRoles, mySelection, myRecommendations, myResult,
-    myHand, roundHistory,
+    myHand, myRecommendations, mySwipes, myResult,
+    myRemainingHand, roundHistory,
     sortedPlayers, otherPlayers,
   } = useGame(roomCode)
 
@@ -40,15 +40,11 @@ export default function GameRoom() {
     )
   }
 
-  // Player arrived via link but hasn't entered their name yet
   const playerInRoom = game.players?.[playerId]
-  if (!playerInRoom) {
-    return <JoinScreen />
-  }
+  if (!playerInRoom) return <JoinScreen />
 
-  // Top nav bar (visible in all phases)
   const Nav = () => (
-    <div className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-rose-100 px-4 py-2 flex items-center justify-between max-w-sm mx-auto">
+    <div className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-rose-100 px-4 py-2 flex items-center justify-between max-w-5xl mx-auto">
       <span className="text-rose-500 font-bold text-sm">💘 Matchmaker</span>
       <div className="flex items-center gap-3">
         {game.status === 'playing' && (
@@ -59,88 +55,51 @@ export default function GameRoom() {
     </div>
   )
 
-  // Lobby
   if (game.status === 'lobby') {
     return (
       <>
         <Nav />
-        <LobbyScreen
-          roomCode={roomCode}
-          game={game}
-          playerId={playerId}
-          isHost={isHost}
-          sortedPlayers={sortedPlayers}
-        />
+        <LobbyScreen roomCode={roomCode} game={game} playerId={playerId} isHost={isHost} sortedPlayers={sortedPlayers} />
       </>
     )
   }
 
-  // Finished
-      if (game.status === 'finished' || game.phase === 'end') {
+  if (game.status === 'finished' || game.phase === 'end') {
     return (
       <>
         <Nav />
-        <EndScreen
-          game={game}
-          playerId={playerId}
-          sortedPlayers={sortedPlayers}
-          myRoles={myRoles}
-          myPersonality={myPersonality}
-          roomCode={roomCode}
-          isHost={isHost}
-        />
+        <EndScreen game={game} playerId={playerId} sortedPlayers={sortedPlayers} myPersonality={myPersonality} roomCode={roomCode} isHost={isHost} />
       </>
     )
   }
 
-  // Playing phases
   return (
     <>
       <Nav />
-      {game.phase === 'soulmate' && (
-        <SoulmateScreen
-          roomCode={roomCode}
-          game={game}
-          playerId={playerId}
-          myPersonality={myPersonality}
-          myHand={myHand}
-          roundHistory={roundHistory}
-          sortedPlayers={sortedPlayers}
-        />
-      )}
       {game.phase === 'recommendation' && (
         <RecommendationScreen
-          roomCode={roomCode}
-          game={game}
-          playerId={playerId}
-          otherPlayers={otherPlayers}
-          myRoles={myRoles}
-          myHand={myHand}
-          myRecommendations={myRecommendations}
-          roundHistory={roundHistory}
+          roomCode={roomCode} game={game} playerId={playerId}
+          otherPlayers={otherPlayers} myHand={myHand}
+          myRecommendations={myRecommendations} roundHistory={roundHistory}
         />
       )}
-      {game.phase === 'selection' && (
-        <SelectionScreen
-          roomCode={roomCode}
-          game={game}
-          playerId={playerId}
-          mySelection={mySelection}
-          myRoles={myRoles}
-          myHand={myHand}
-          otherPlayers={otherPlayers}
-          sortedPlayers={sortedPlayers}
-          roundHistory={roundHistory}
+      {game.phase === 'swipe' && (
+        <SwipeScreen
+          roomCode={roomCode} game={game} playerId={playerId}
+          otherPlayers={otherPlayers} mySwipes={mySwipes}
+          myHand={myHand} sortedPlayers={sortedPlayers}
         />
       )}
       {game.phase === 'reveal' && (
         <RevealScreen
-          roomCode={roomCode}
-          game={game}
-          playerId={playerId}
-          isHost={isHost}
+          roomCode={roomCode} game={game} playerId={playerId}
+          isHost={isHost} sortedPlayers={sortedPlayers}
+        />
+      )}
+      {game.phase === 'soulmate' && (
+        <SoulmateScreen
+          roomCode={roomCode} game={game} playerId={playerId}
           sortedPlayers={sortedPlayers}
-          myRoles={myRoles}
         />
       )}
     </>

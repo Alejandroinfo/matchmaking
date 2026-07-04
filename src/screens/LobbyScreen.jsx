@@ -84,19 +84,28 @@ export default function LobbyScreen({ roomCode, game, playerId, isHost, sortedPl
                 <label className="text-sm text-gray-600 font-medium">Rondas</label>
                 <div className="flex gap-2 mt-1">
                   {[2, 3, 4, 5].map(n => (
-                    <button
-                      key={n}
-                      onClick={() => handleSetting('totalRounds', n)}
+                    <button key={n} onClick={() => handleSetting('totalRounds', n)}
                       className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${
-                        settings.totalRounds === n
-                          ? 'bg-rose-500 text-white border-rose-500'
-                          : 'bg-white text-gray-600 border-rose-100 hover:border-rose-300'
-                      }`}
-                    >
-                      {n}
+                        settings.totalRounds === n ? 'bg-rose-500 text-white border-rose-500' : 'bg-white text-gray-600 border-rose-100 hover:border-rose-300'
+                      }`}>{n}</button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm text-gray-600 font-medium">Opciones por atributo</label>
+                <div className="flex gap-2 mt-1">
+                  {[4, 6].map(n => (
+                    <button key={n} onClick={() => handleSetting('numOptions', n)}
+                      className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                        settings.numOptions === n ? 'bg-rose-500 text-white border-rose-500' : 'bg-white text-gray-600 border-rose-100 hover:border-rose-300'
+                      }`}>
+                      {n} opciones
                     </button>
                   ))}
                 </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  {settings.numOptions === 4 ? '2 pares de opuestos por atributo — más fácil de deducir' : '3 pares de opuestos por atributo — más variedad'}
+                </p>
               </div>
             </div>
           </div>
