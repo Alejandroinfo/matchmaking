@@ -153,7 +153,12 @@ export async function nextRound(roomCode) {
   const nextRound = data.round + 1
 
   if (nextRound > data.settings.totalRounds) {
-    await updateDoc(ref, { status: 'finished', phase: 'end' })
+    // Go to soulmate phase instead of ending directly
+    await updateDoc(ref, {
+      phase: 'soulmate',
+      soulmateHands: data.hands, // preserve current hands for soulmate selection
+      soulmateSelections: {},
+    })
     return
   }
 
@@ -168,6 +173,44 @@ export async function nextRound(roomCode) {
     selections: {},
     roundResults: {},
   })
+}
+
+export async function submitSoulmateSelection(roomCode, playerId, postorId) {
+  const ref = doc(db, 'games', roomCode)
+  await updateDoc(ref, { [`soulmateSelections.${playerId}`]: postorId })
+
+  const snap = await getDoc(ref)
+  const data = snap.data()
+  const playerIds = Object.keys(data.players)
+  const allSelected = playerIds.every(pid => data.soulmateSelections?.[pid] != null)
+
+  if (allSelected) {
+    // Compute soulmate compatibility (own points only, no role points)
+    const soulmateResults = {}
+    playerIds.forEach(pid => {
+      const { ownPoints, matches } = computeCompatibility(
+        data.personalities[pid],
+        data.soulmateSelections[pid]
+      )
+      soulmateResults[pid] = { ownPoints, matches, postorId: data.soulmateSelections[pid] }
+    })
+
+    // Update scores with soulmate points
+    const updatedPlayers = { ...data.players }
+    playerIds.forEach(pid => {
+      updatedPlayers[pid] = {
+        ...updatedPlayers[pid],
+        score: (updatedPlayers[pid].score || 0) + soulmateResults[pid].ownPoints,
+      }
+    })
+
+    await updateDoc(ref, {
+      status: 'finished',
+      phase: 'end',
+      soulmateResults,
+      players: updatedPlayers,
+    })
+  }
 }
 
 export async function updateSettings(roomCode, settings) {

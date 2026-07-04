@@ -4,6 +4,7 @@ import LobbyScreen from './LobbyScreen'
 import RecommendationScreen from './RecommendationScreen'
 import SelectionScreen from './SelectionScreen'
 import RevealScreen from './RevealScreen'
+import SoulmateScreen from './SoulmateScreen'
 import EndScreen from './EndScreen'
 
 export default function GameRoom() {
@@ -87,6 +88,17 @@ export default function GameRoom() {
   return (
     <>
       <Nav />
+      {game.phase === 'soulmate' && (
+        <SoulmateScreen
+          roomCode={roomCode}
+          game={game}
+          playerId={playerId}
+          myPersonality={myPersonality}
+          myHand={myHand}
+          roundHistory={roundHistory}
+          sortedPlayers={sortedPlayers}
+        />
+      )}
       {game.phase === 'recommendation' && (
         <RecommendationScreen
           roomCode={roomCode}
