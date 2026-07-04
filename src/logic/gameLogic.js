@@ -13,7 +13,6 @@ export function dealPersonalities(playerIds) {
   const n = playerIds.length
   const copiesPerOption = n <= 4 ? 2 : 3
 
-  // Build independent pool per attribute
   const pools = {}
   ATTRIBUTES.forEach(attr => {
     pools[attr.name] = shuffle(ATTR_OPTIONS[attr.name].flatMap(opt =>
@@ -23,14 +22,25 @@ export function dealPersonalities(playerIds) {
 
   const personalities = {}
   playerIds.forEach(playerId => {
-    // Draw 1 from each attribute pool, then shuffle to randomize priority
-    const cards = ATTRIBUTES.map(attr => ({
+    // Shuffle to randomize priority order
+    const cards = shuffle(ATTRIBUTES.map(attr => ({
       attribute: attr.name,
       value: pools[attr.name].pop(),
-    }))
-    personalities[playerId] = shuffle(cards)
+    })))
+    personalities[playerId] = cards
   })
   return personalities
+}
+
+// Deal private hands: numPlayers + 3 postors per player, no overlap
+export function dealHands(playerIds) {
+  const handSize = playerIds.length + 3
+  const shuffled = shuffle([...ALL_POSTORS])
+  const hands = {}
+  playerIds.forEach((pid, i) => {
+    hands[pid] = shuffled.slice(i * handSize, (i + 1) * handSize).map(p => p.id)
+  })
+  return hands
 }
 
 export function assignRoles(playerIds) {
@@ -38,6 +48,7 @@ export function assignRoles(playerIds) {
   const roles = {}
 
   const distributions = {
+    2: ['friend'],
     3: ['friend', 'enemy'],
     4: ['friend', 'enemy', 'neutral'],
     5: ['friend', 'friend', 'enemy', 'enemy'],
@@ -46,17 +57,13 @@ export function assignRoles(playerIds) {
 
   playerIds.forEach(playerId => {
     const others = playerIds.filter(id => id !== playerId)
-    const dist = shuffle([...distributions[n]])
+    const dist = shuffle([...(distributions[n] ?? distributions[3])])
     roles[playerId] = {}
     others.forEach((otherId, i) => {
       roles[playerId][otherId] = dist[i]
     })
   })
   return roles
-}
-
-export function selectPostors(count) {
-  return shuffle([...ALL_POSTORS]).slice(0, count).map(p => p.id)
 }
 
 export function computeCompatibility(personality, postorId) {
@@ -80,14 +87,27 @@ export function computeCompatibility(personality, postorId) {
 export function computeRolePoints(playerId, allResults, roles) {
   const myRoles = roles[playerId] || {}
   let rolePoints = 0
-
   Object.entries(myRoles).forEach(([targetId, role]) => {
     const targetOwnPoints = allResults[targetId]?.ownPoints ?? 0
     if (role === 'friend') rolePoints += targetOwnPoints / 2
     if (role === 'enemy') rolePoints -= targetOwnPoints / 2
   })
-
   return Math.round(rolePoints * 10) / 10
+}
+
+// Sort personality display to match fixed attribute order (for easy postor comparison)
+// but preserve original priority weights from shuffled positions
+export function sortedPersonalityDisplay(personality) {
+  const attrOrder = ATTRIBUTES.map(a => a.name)
+  // Build weight map from original shuffled positions
+  const weightMap = {}
+  personality.forEach((card, i) => {
+    weightMap[card.attribute] = PRIORITY_POINTS[i]
+  })
+  // Sort by fixed attribute order
+  return [...personality]
+    .sort((a, b) => attrOrder.indexOf(a.attribute) - attrOrder.indexOf(b.attribute))
+    .map(card => ({ ...card, weight: weightMap[card.attribute] }))
 }
 
 export function getRoleLabel(role) {

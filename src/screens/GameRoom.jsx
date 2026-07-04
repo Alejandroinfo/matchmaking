@@ -11,6 +11,7 @@ export default function GameRoom() {
   const {
     game, loading, playerId, isHost, myPersonality,
     myRoles, mySelection, myRecommendations, myResult,
+    myHand, roundHistory,
     sortedPlayers, otherPlayers,
   } = useGame(roomCode)
 
@@ -93,7 +94,9 @@ export default function GameRoom() {
           playerId={playerId}
           otherPlayers={otherPlayers}
           myRoles={myRoles}
+          myHand={myHand}
           myRecommendations={myRecommendations}
+          roundHistory={roundHistory}
         />
       )}
       {game.phase === 'selection' && (
@@ -103,8 +106,10 @@ export default function GameRoom() {
           playerId={playerId}
           mySelection={mySelection}
           myRoles={myRoles}
+          myHand={myHand}
           otherPlayers={otherPlayers}
           sortedPlayers={sortedPlayers}
+          roundHistory={roundHistory}
         />
       )}
       {game.phase === 'reveal' && (

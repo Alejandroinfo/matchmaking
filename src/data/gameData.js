@@ -19,11 +19,6 @@ export const ATTRIBUTES = [
     emoji: '💡',
     pairs: [['Ambicioso', 'Conformista'], ['Familiar', 'Independiente'], ['Generoso', 'Ahorrativo']],
   },
-  {
-    name: 'Intereses',
-    emoji: '🎵',
-    pairs: [['Arte', 'Ciencia'], ['Naturaleza', 'Ciudad'], ['Música', 'Silencio']],
-  },
 ]
 
 export const ATTR_OPTIONS = {}
@@ -38,7 +33,7 @@ ATTRIBUTES.forEach(attr => {
   })
 })
 
-export const PRIORITY_POINTS = [3, 2, 2, 1, 1]
+export const PRIORITY_POINTS = [3, 2, 2, 1]
 
 // 150 postor names pool
 const FIRST_NAMES = [

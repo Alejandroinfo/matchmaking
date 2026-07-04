@@ -1,9 +1,7 @@
 import { db } from '../firebase'
+import { doc, setDoc, updateDoc, getDoc, onSnapshot, serverTimestamp } from 'firebase/firestore'
 import {
-  doc, setDoc, updateDoc, getDoc, onSnapshot, serverTimestamp
-} from 'firebase/firestore'
-import {
-  dealPersonalities, assignRoles, selectPostors,
+  dealPersonalities, assignRoles, dealHands,
   computeCompatibility, computeRolePoints
 } from '../logic/gameLogic'
 
@@ -23,28 +21,22 @@ export function getOrCreatePlayerId() {
 export async function createRoom(playerName, settings) {
   const playerId = getOrCreatePlayerId()
   const roomCode = generateRoomCode()
-
   await setDoc(doc(db, 'games', roomCode), {
     hostId: playerId,
     status: 'lobby',
-    settings: {
-      totalRounds: settings.totalRounds ?? 4,
-      numPostors: settings.numPostors ?? 20,
-    },
+    settings: { totalRounds: settings.totalRounds ?? 4 },
     round: 0,
     phase: null,
-    players: {
-      [playerId]: { name: playerName, score: 0, joinOrder: 0 },
-    },
+    players: { [playerId]: { name: playerName, score: 0, joinOrder: 0 } },
     personalities: {},
     roles: {},
-    deployedPostors: [],
+    hands: {},
     recommendations: {},
     selections: {},
     roundResults: {},
+    roundHistory: [],
     createdAt: serverTimestamp(),
   })
-
   return { roomCode, playerId }
 }
 
@@ -52,17 +44,13 @@ export async function joinRoom(roomCode, playerName) {
   const playerId = getOrCreatePlayerId()
   const ref = doc(db, 'games', roomCode)
   const snap = await getDoc(ref)
-
   if (!snap.exists()) throw new Error('Sala no encontrada')
   const data = snap.data()
   if (data.status !== 'lobby') throw new Error('La partida ya ha comenzado')
-
   const joinOrder = Object.keys(data.players).length
-
   await updateDoc(ref, {
     [`players.${playerId}`]: { name: playerName, score: 0, joinOrder },
   })
-
   return { roomCode, playerId }
 }
 
@@ -77,12 +65,11 @@ export async function startGame(roomCode) {
   const snap = await getDoc(ref)
   const data = snap.data()
   const playerIds = Object.keys(data.players)
-
   if (playerIds.length < 2) throw new Error('Necesitas al menos 2 jugadores')
 
   const personalities = dealPersonalities(playerIds)
   const roles = assignRoles(playerIds)
-  const postorsForRound = selectPostors(data.settings.numPostors)
+  const hands = dealHands(playerIds)
 
   await updateDoc(ref, {
     status: 'playing',
@@ -90,20 +77,18 @@ export async function startGame(roomCode) {
     phase: 'recommendation',
     personalities,
     roles,
-    deployedPostors: postorsForRound,
+    hands,
     recommendations: {},
     selections: {},
     roundResults: {},
+    roundHistory: [],
   })
 }
 
 export async function submitRecommendations(roomCode, playerId, recommendations) {
   const ref = doc(db, 'games', roomCode)
-  await updateDoc(ref, {
-    [`recommendations.${playerId}`]: recommendations,
-  })
+  await updateDoc(ref, { [`recommendations.${playerId}`]: recommendations })
 
-  // Check if all players have submitted
   const snap = await getDoc(ref)
   const data = snap.data()
   const playerIds = Object.keys(data.players)
@@ -116,18 +101,14 @@ export async function submitRecommendations(roomCode, playerId, recommendations)
 
 export async function submitSelection(roomCode, playerId, postorId) {
   const ref = doc(db, 'games', roomCode)
-  await updateDoc(ref, {
-    [`selections.${playerId}`]: postorId,
-  })
+  await updateDoc(ref, { [`selections.${playerId}`]: postorId })
 
-  // Check if all players have selected
   const snap = await getDoc(ref)
   const data = snap.data()
   const playerIds = Object.keys(data.players)
   const allSelected = playerIds.every(pid => data.selections?.[pid] != null)
 
   if (allSelected) {
-    // Compute results
     const roundResults = {}
     playerIds.forEach(pid => {
       const { ownPoints, matches } = computeCompatibility(
@@ -136,15 +117,12 @@ export async function submitSelection(roomCode, playerId, postorId) {
       )
       roundResults[pid] = { ownPoints, matches, postorId: data.selections[pid] }
     })
-
-    // Add role points
     playerIds.forEach(pid => {
       const rolePoints = computeRolePoints(pid, roundResults, data.roles)
       roundResults[pid].rolePoints = rolePoints
       roundResults[pid].totalPoints = roundResults[pid].ownPoints + rolePoints
     })
 
-    // Update scores
     const updatedPlayers = { ...data.players }
     playerIds.forEach(pid => {
       updatedPlayers[pid] = {
@@ -153,10 +131,17 @@ export async function submitSelection(roomCode, playerId, postorId) {
       }
     })
 
+    // Append to history
+    const roundHistory = [...(data.roundHistory ?? []), {
+      round: data.round,
+      results: roundResults,
+    }]
+
     await updateDoc(ref, {
       phase: 'reveal',
       roundResults,
       players: updatedPlayers,
+      roundHistory,
     })
   }
 }
@@ -172,12 +157,13 @@ export async function nextRound(roomCode) {
     return
   }
 
-  const postorsForRound = selectPostors(data.settings.numPostors)
+  const playerIds = Object.keys(data.players)
+  const hands = dealHands(playerIds)
 
   await updateDoc(ref, {
     round: nextRound,
     phase: 'recommendation',
-    deployedPostors: postorsForRound,
+    hands,
     recommendations: {},
     selections: {},
     roundResults: {},

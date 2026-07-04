@@ -5,9 +5,10 @@ import { getRoleLabel, getRoleColor } from '../logic/gameLogic'
 import PersonalityPanel from '../components/PersonalityPanel'
 import PostorCard from '../components/PostorCard'
 import AntagonistTable from '../components/AntagonistTable'
+import MatchHistory from '../components/MatchHistory'
 
 export default function RecommendationScreen({
-  roomCode, game, playerId, otherPlayers, myRoles, myRecommendations
+  roomCode, game, playerId, otherPlayers, myRoles, myRecommendations, myHand, roundHistory
 }) {
   const [selectedRecipient, setSelectedRecipient] = useState(otherPlayers[0]?.id ?? null)
   const [recs, setRecs] = useState(myRecommendations)
@@ -15,12 +16,14 @@ export default function RecommendationScreen({
   const [loading, setLoading] = useState(false)
   const [showAntagonists, setShowAntagonists] = useState(false)
 
-  const deployedPostors = (game.deployedPostors ?? []).map(id => ALL_POSTORS[id])
+  const handPostors = myHand.map(id => ALL_POSTORS[id])
   const allDone = otherPlayers.every(p => recs[p.id] != null)
   const whoSubmitted = Object.keys(game.recommendations ?? {})
+  const usedPostorIds = Object.values(recs)
 
   function pickPostor(postorId) {
     if (submitted) return
+    // If already assigned to someone else, swap
     setRecs(prev => ({ ...prev, [selectedRecipient]: postorId }))
   }
 
@@ -40,15 +43,14 @@ export default function RecommendationScreen({
   const recipientRole = myRoles[selectedRecipient]
 
   return (
-    <div className="min-h-screen p-4 max-w-4xl mx-auto space-y-4">
-      {/* Header */}
+    <div className="min-h-screen p-4 max-w-5xl mx-auto space-y-4">
       <div className="text-center pt-2">
         <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Ronda {game.round} · Recomienda</p>
-        <h2 className="text-lg font-bold text-gray-800 mt-1">¿A quién le mandas con quién?</h2>
+        <h2 className="text-lg font-bold text-gray-800 mt-1">Elige de tu mano un postor para cada jugador</h2>
       </div>
 
       {/* Submitted progress */}
-      <div className="card flex items-center gap-2 py-3 flex-wrap">
+      <div className="card flex items-center gap-2 py-2 flex-wrap">
         <span className="text-xs text-gray-500">Enviados:</span>
         {Object.keys(game.players ?? {}).map(pid => {
           const done = whoSubmitted.includes(pid)
@@ -62,13 +64,10 @@ export default function RecommendationScreen({
         })}
       </div>
 
-      {/* Two-column layout on wider screens */}
       <div className="flex flex-col lg:flex-row gap-4">
 
-        {/* LEFT: all personalities + recipient sticky panel */}
-        <div className="lg:w-80 space-y-4 flex-shrink-0">
-
-          {/* All personalities */}
+        {/* LEFT: others' personalities + history + antagonists */}
+        <div className="lg:w-72 xl:w-80 flex-shrink-0 space-y-4">
           <div className="card">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Personalidades</p>
             <div className="space-y-3">
@@ -105,20 +104,20 @@ export default function RecommendationScreen({
             </div>
           </div>
 
-          {/* Antagonist reference toggle */}
-          <button
-            onClick={() => setShowAntagonists(v => !v)}
-            className="btn-secondary w-full text-sm"
-          >
+          {roundHistory.length > 0 && (
+            <MatchHistory roundHistory={roundHistory} playerId={playerId} />
+          )}
+
+          <button onClick={() => setShowAntagonists(v => !v)} className="btn-secondary w-full text-sm">
             {showAntagonists ? '▲ Ocultar opuestos' : '▼ Ver tabla de opuestos'}
           </button>
           {showAntagonists && <AntagonistTable />}
         </div>
 
-        {/* RIGHT: sticky recipient card + postors grid */}
+        {/* RIGHT: recipient sticky + hand */}
         <div className="flex-1 space-y-4">
 
-          {/* Recipient selector tabs */}
+          {/* Recipient tabs */}
           <div className="flex gap-2 flex-wrap">
             {otherPlayers.map(p => {
               const done = recs[p.id] != null
@@ -148,7 +147,7 @@ export default function RecommendationScreen({
                   <div className="w-7 h-7 rounded-full bg-rose-200 flex items-center justify-center text-sm font-bold text-rose-600">
                     {recipientPlayer.name.charAt(0)}
                   </div>
-                  <span className="font-bold text-gray-800">Recomendando para: {recipientPlayer.name}</span>
+                  <span className="font-bold text-gray-800">Para: {recipientPlayer.name}</span>
                 </div>
                 {recipientRole && (
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getRoleColor(recipientRole)}`}>
@@ -174,35 +173,39 @@ export default function RecommendationScreen({
             </div>
           )}
 
-          {/* Postors grid — adaptive columns */}
+          {/* My hand */}
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-              Postores ({deployedPostors.length})
+              Tu mano ({handPostors.length} postores)
             </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-2">
-              {deployedPostors.map(postor => (
-                <PostorCard
-                  key={postor.id}
-                  postor={postor}
-                  selected={recs[selectedRecipient] === postor.id}
-                  onClick={() => !submitted && pickPostor(postor.id)}
-                  disabled={submitted}
-                  mini
-                />
-              ))}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+              {handPostors.map(postor => {
+                const assignedTo = Object.entries(recs).find(([, pid]) => pid === postor.id)
+                const isAssigned = !!assignedTo
+                const assignedName = assignedTo
+                  ? otherPlayers.find(p => p.id === assignedTo[0])?.name.split(' ')[0]
+                  : null
+                return (
+                  <PostorCard
+                    key={postor.id}
+                    postor={postor}
+                    selected={recs[selectedRecipient] === postor.id}
+                    onClick={() => !submitted && pickPostor(postor.id)}
+                    disabled={submitted}
+                    highlighted={isAssigned && recs[selectedRecipient] !== postor.id}
+                    badge={assignedName ? `→ ${assignedName}` : null}
+                    mini
+                  />
+                )
+              })}
             </div>
           </div>
 
-          {/* Submit */}
           {!submitted ? (
-            <button
-              onClick={handleSubmit}
-              disabled={!allDone || loading}
-              className="btn-primary w-full sticky bottom-4"
-            >
+            <button onClick={handleSubmit} disabled={!allDone || loading} className="btn-primary w-full sticky bottom-4">
               {loading ? 'Enviando...' : allDone
                 ? '✓ Enviar recomendaciones'
-                : `Faltan ${otherPlayers.length - Object.keys(recs).length} por elegir`}
+                : `Faltan ${otherPlayers.length - Object.keys(recs).length} por asignar`}
             </button>
           ) : (
             <div className="card text-center py-4">
@@ -217,7 +220,6 @@ export default function RecommendationScreen({
           )}
         </div>
       </div>
-
       <div className="h-4" />
     </div>
   )

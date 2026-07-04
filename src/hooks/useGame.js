@@ -29,9 +29,11 @@ export function useGame(roomCode) {
     myName: players[playerId]?.name ?? '',
     myPersonality: game?.personalities?.[playerId] ?? [],
     myRoles: game?.roles?.[playerId] ?? {},
+    myHand: game?.hands?.[playerId] ?? [],
     mySelection: game?.selections?.[playerId] ?? null,
     myRecommendations: game?.recommendations?.[playerId] ?? {},
     myResult: game?.roundResults?.[playerId] ?? null,
+    roundHistory: game?.roundHistory ?? [],
     sortedPlayers,
     otherPlayers: sortedPlayers.filter(p => p.id !== playerId),
   }
