@@ -24,14 +24,15 @@ export default function SelectionScreen({
     .filter(p => recommendations[p.id]?.[playerId] != null)
     .map(p => ({ player: p, postorId: recommendations[p.id][playerId] }))
 
-  // Remaining hand: cards NOT used in my recommendations
-  const myUsedIds = new Set(
-    Object.values(recommendations[playerId] ?? {})
-  )
+  // My recommendations to others
+  const myRecsGiven = otherPlayers
+    .filter(p => recommendations[playerId]?.[p.id] != null)
+    .map(p => ({ player: p, postorId: recommendations[playerId][p.id] }))
+
+  // Remaining hand
+  const myUsedIds = new Set(Object.values(recommendations[playerId] ?? {}))
   const remainingHand = myHand.filter(id => !myUsedIds.has(id)).map(id => ALL_POSTORS[id])
 
-  // All selectable options: recommendations + remaining hand (deduped)
-  const recPostorIds = new Set(recsForMe.map(r => r.postorId))
   const whoSelected = Object.keys(selections).filter(pid => selections[pid] != null)
 
   async function handleConfirm() {
@@ -69,17 +70,17 @@ export default function SelectionScreen({
 
       <div className="flex flex-col lg:flex-row gap-4">
 
-        {/* LEFT: others' personalities + history */}
+        {/* LEFT: personalities + history + antagonists */}
         <div className="lg:w-72 xl:w-80 flex-shrink-0 space-y-4">
           <div className="card">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Personalidades</p>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {otherPlayers.map(p => {
                 const personality = personalities[p.id] ?? []
                 const role = myRoles[p.id]
                 return (
-                  <div key={p.id} className="border-b border-rose-50 last:border-0 pb-3 last:pb-0">
-                    <div className="flex items-center justify-between mb-1.5">
+                  <div key={p.id} className="border-b border-rose-50 last:border-0 pb-4 last:pb-0">
+                    <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full bg-rose-100 flex items-center justify-center text-xs font-bold text-rose-500">
                           {p.name.charAt(0)}
@@ -92,7 +93,7 @@ export default function SelectionScreen({
                         </span>
                       )}
                     </div>
-                    <PersonalityPanel personality={personality} showValues compact />
+                    <PersonalityPanel personality={personality} showValues />
                   </div>
                 )
               })}
@@ -100,7 +101,7 @@ export default function SelectionScreen({
           </div>
 
           {roundHistory.length > 0 && (
-            <MatchHistory roundHistory={roundHistory} playerId={playerId} />
+            <MatchHistory roundHistory={roundHistory} playerId={playerId} players={game.players} />
           )}
 
           <button onClick={() => setShowAntagonists(v => !v)} className="btn-secondary w-full text-sm">
@@ -109,7 +110,7 @@ export default function SelectionScreen({
           {showAntagonists && <AntagonistTable />}
         </div>
 
-        {/* RIGHT: options */}
+        {/* RIGHT */}
         <div className="flex-1 space-y-4">
 
           {/* Recommendations received */}
@@ -118,10 +119,9 @@ export default function SelectionScreen({
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                 Te recomiendan ({recsForMe.length})
               </p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {recsForMe.map(({ player, postorId }) => {
                   const postor = ALL_POSTORS[postorId]
-                  const role = myRoles[player.id]
                   return (
                     <PostorCard
                       key={`rec-${player.id}`}
@@ -131,7 +131,6 @@ export default function SelectionScreen({
                       disabled={confirmed}
                       highlighted
                       badge={`💌 ${player.name.split(' ')[0]}`}
-                      mini
                     />
                   )
                 })}
@@ -145,7 +144,7 @@ export default function SelectionScreen({
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                 Tu mano restante ({remainingHand.length})
               </p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {remainingHand.map(postor => (
                   <PostorCard
                     key={`hand-${postor.id}`}
@@ -153,9 +152,46 @@ export default function SelectionScreen({
                     selected={selected === postor.id}
                     onClick={() => !confirmed && setSelected(postor.id)}
                     disabled={confirmed}
-                    mini
                   />
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* My recommendations to others — for social play */}
+          {myRecsGiven.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                Tus recomendaciones para los demás
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {myRecsGiven.map(({ player, postorId }) => {
+                  const postor = ALL_POSTORS[postorId]
+                  return (
+                    <div key={`given-${player.id}`} className="card border-dashed border-gray-200">
+                      <p className="text-xs text-gray-400 mb-2">
+                        → Para <span className="font-semibold text-gray-600">{player.name.split(' ')[0]}</span>
+                      </p>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500">
+                          {postor.name.charAt(0)}
+                        </div>
+                        <p className="font-semibold text-gray-700 text-sm truncate">{postor.name}</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+                        {[...Object.keys(postor)].filter(k => k !== 'id' && k !== 'name').map(attr => {
+                          const emoji = { Pasatiempo: '🎨', Personalidad: '✨', 'Estilo de vida': '🌿', Valores: '💡' }[attr] ?? '•'
+                          return (
+                            <div key={attr} className="flex items-center gap-1">
+                              <span className="text-xs">{emoji}</span>
+                              <span className="text-xs text-gray-500 truncate">{postor[attr]}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}

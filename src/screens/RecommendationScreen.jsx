@@ -105,7 +105,7 @@ export default function RecommendationScreen({
           </div>
 
           {roundHistory.length > 0 && (
-            <MatchHistory roundHistory={roundHistory} playerId={playerId} />
+            <MatchHistory roundHistory={roundHistory} playerId={playerId} players={game.players} />
           )}
 
           <button onClick={() => setShowAntagonists(v => !v)} className="btn-secondary w-full text-sm">

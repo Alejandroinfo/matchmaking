@@ -131,10 +131,28 @@ export async function submitSelection(roomCode, playerId, postorId) {
       }
     })
 
-    // Append to history
+    // Build available options per player (recs received + remaining hand)
+    const availableOptions = {}
+    playerIds.forEach(pid => {
+      const recsReceived = playerIds
+        .filter(fromId => fromId !== pid && data.recommendations?.[fromId]?.[pid] != null)
+        .map(fromId => ({ postorId: data.recommendations[fromId][pid], fromPlayerId: fromId }))
+
+      const usedIds = new Set(Object.values(data.recommendations?.[pid] ?? {}))
+      const remainingHand = (data.hands?.[pid] ?? [])
+        .filter(id => !usedIds.has(id))
+        .map(id => ({ postorId: id, fromPlayerId: null }))
+
+      availableOptions[pid] = [...recsReceived, ...remainingHand]
+        .filter(opt => opt.postorId !== data.selections[pid]) // exclude chosen
+    })
+
+    // Append to history including recommendations and available options
     const roundHistory = [...(data.roundHistory ?? []), {
       round: data.round,
       results: roundResults,
+      recommendations: data.recommendations ?? {},
+      availableOptions,
     }]
 
     await updateDoc(ref, {
