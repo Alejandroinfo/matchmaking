@@ -1,37 +1,9 @@
 import { useState } from 'react'
 import { submitRecommendations } from '../services/gameService'
-import { ATTRIBUTES } from '../data/gameData'
 import PersonalityPanel from '../components/PersonalityPanel'
+import PostorCard from '../components/PostorCard'
 import AntagonistTable from '../components/AntagonistTable'
 import MatchHistory from '../components/MatchHistory'
-
-function PostorCard({ postor, selected, onClick, disabled, badge }) {
-  return (
-    <button onClick={onClick} disabled={disabled && !selected}
-      className={`w-full text-left p-3 rounded-2xl border transition-all ${
-        selected ? 'border-rose-400 bg-rose-50 shadow-sm' :
-        disabled ? 'border-gray-100 bg-gray-50 opacity-60' :
-        'border-rose-100 bg-white hover:border-rose-300'
-      }`}>
-      <div className="flex items-center gap-2 mb-1.5">
-        <div className="w-6 h-6 rounded-full bg-rose-100 flex items-center justify-center text-xs font-bold text-rose-500">
-          {postor.name.charAt(0)}
-        </div>
-        <p className="font-semibold text-gray-800 text-sm truncate flex-1">{postor.name}</p>
-        {selected && <span className="text-rose-500 text-sm">💘</span>}
-      </div>
-      <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
-        {ATTRIBUTES.map(attr => (
-          <div key={attr.name} className="flex items-center gap-1 text-xs">
-            <span>{attr.emoji}</span>
-            <span className="text-gray-600 truncate">{postor[attr.name]}</span>
-          </div>
-        ))}
-      </div>
-      {badge && <p className="mt-1.5 text-xs text-amber-600">{badge}</p>}
-    </button>
-  )
-}
 
 export default function RecommendationScreen({
   roomCode, game, playerId, otherPlayers, myHand, myRecommendations, roundHistory
@@ -122,7 +94,7 @@ export default function RecommendationScreen({
           <button onClick={() => setShowAntagonists(v => !v)} className="btn-secondary w-full text-sm">
             {showAntagonists ? '▲ Ocultar opuestos' : '▼ Ver tabla de opuestos'}
           </button>
-          {showAntagonists && <AntagonistTable />}
+          {showAntagonists && <AntagonistTable numOptions={game.settings?.numOptions ?? 6} />}
         </div>
 
         {/* RIGHT: recipient + hand */}
@@ -165,19 +137,18 @@ export default function RecommendationScreen({
           {/* Hand */}
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Tu mano ({myHand.length})</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {myHand.map(postor => {
                 const assignedTo = Object.entries(recs).find(([, p]) => p?.uid === postor.uid)
                 const assignedName = assignedTo ? otherPlayers.find(p => p.id === assignedTo[0])?.name.split(' ')[0] : null
                 return (
-                  <PostorCard
-                    key={postor.uid}
-                    postor={postor}
-                    selected={recs[selectedRecipient]?.uid === postor.uid}
-                    onClick={() => !submitted && pickPostor(postor)}
-                    disabled={submitted}
-                    badge={assignedName ? `→ Para ${assignedName}` : null}
-                  />
+                  <div key={postor.uid} onClick={() => !submitted && pickPostor(postor)} className="cursor-pointer">
+                    <PostorCard
+                      postor={postor}
+                      selected={recs[selectedRecipient]?.uid === postor.uid}
+                      badge={assignedName ? `→ Para ${assignedName}` : null}
+                    />
+                  </div>
                 )
               })}
             </div>

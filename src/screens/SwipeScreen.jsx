@@ -2,28 +2,7 @@ import { useState } from 'react'
 import { submitSwipes } from '../services/gameService'
 import { ATTRIBUTES } from '../data/gameData'
 import PersonalityPanel from '../components/PersonalityPanel'
-
-function PostorCard({ postor, children, className = '' }) {
-  return (
-    <div className={`rounded-2xl border p-3 ${className}`}>
-      <div className="flex items-center gap-2 mb-2">
-        <div className="w-7 h-7 rounded-full bg-rose-100 flex items-center justify-center font-bold text-rose-500 text-sm">
-          {postor.name.charAt(0)}
-        </div>
-        <p className="font-bold text-gray-800">{postor.name}</p>
-      </div>
-      <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
-        {ATTRIBUTES.map(attr => (
-          <div key={attr.name} className="flex items-center gap-1 text-xs">
-            <span>{attr.emoji}</span>
-            <span className="text-gray-600">{postor[attr.name]}</span>
-          </div>
-        ))}
-      </div>
-      {children}
-    </div>
-  )
-}
+import PostorCard from '../components/PostorCard'
 
 export default function SwipeScreen({ roomCode, game, playerId, otherPlayers, mySwipes, myHand, sortedPlayers }) {
   const recommendations = game.recommendations ?? {}
@@ -128,26 +107,33 @@ export default function SwipeScreen({ roomCode, game, playerId, otherPlayers, my
                 {recsForMe.map(({ player, postor }) => {
                   const decision = swipes[postor.uid]
                   return (
-                    <PostorCard key={postor.uid} postor={postor} className={`border-2 transition-all ${
-                      decision === true ? 'border-emerald-300 bg-emerald-50' :
-                      decision === false ? 'border-gray-200 bg-gray-50' :
-                      'border-rose-100 bg-white'
+                    <div key={postor.uid} className={`rounded-2xl overflow-hidden border-2 transition-all ${
+                      decision === true ? 'border-emerald-400' :
+                      decision === false ? 'border-gray-200 opacity-60' :
+                      'border-rose-100'
                     }`}>
-                      <p className="text-xs text-amber-600 mt-2">💌 {player.name.split(' ')[0]}</p>
+                      <PostorCard
+                        postor={postor}
+                        badge={`💌 ${player.name.split(' ')[0]}`}
+                      />
                       {!submitted && (
-                        <div className="flex gap-2 mt-3">
+                        <div className="flex gap-2 p-3 bg-white border-t border-rose-50">
                           <button onClick={() => swipe(postor.uid, true)}
-                            className={`flex-1 py-2 rounded-xl font-bold text-sm transition-all ${
+                            className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${
                               decision === true ? 'bg-emerald-500 text-white' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
                             }`}>💚 Aceptar</button>
                           <button onClick={() => swipe(postor.uid, false)}
-                            className={`flex-1 py-2 rounded-xl font-bold text-sm transition-all ${
+                            className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${
                               decision === false ? 'bg-gray-400 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                             }`}>❌ Rechazar</button>
                         </div>
                       )}
-                      {submitted && <p className="mt-2 text-sm font-bold">{decision ? '💚 Aceptado' : '❌ Rechazado'}</p>}
-                    </PostorCard>
+                      {submitted && (
+                        <div className={`px-3 py-2 text-sm font-bold text-center ${decision ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-50 text-gray-400'}`}>
+                          {decision ? '💚 Aceptado' : '❌ Rechazado'}
+                        </div>
+                      )}
+                    </div>
                   )
                 })}
               </div>
@@ -163,19 +149,26 @@ export default function SwipeScreen({ roomCode, game, playerId, otherPlayers, my
                 {remainingHand.map(postor => {
                   const isSelected = selfDate?.uid === postor.uid
                   return (
-                    <PostorCard key={postor.uid} postor={postor} className={`border-2 cursor-pointer transition-all ${
-                      isSelected ? 'border-purple-400 bg-purple-50' : 'border-gray-200 bg-white hover:border-purple-200'
+                    <div key={postor.uid} className={`rounded-2xl overflow-hidden border-2 transition-all ${
+                      isSelected ? 'border-purple-400' : 'border-gray-200'
                     }`}>
+                      <PostorCard postor={postor} />
                       {!submitted && (
-                        <button onClick={() => toggleSelfDate(postor)}
-                          className={`w-full mt-3 py-2 rounded-xl font-bold text-sm transition-all ${
-                            isSelected ? 'bg-purple-500 text-white' : 'bg-purple-50 text-purple-600 hover:bg-purple-100'
-                          }`}>
-                          {isSelected ? '🎲 Salgo con este' : '🎲 Salir yo solo'}
-                        </button>
+                        <div className="p-3 bg-white border-t border-gray-100">
+                          <button onClick={() => toggleSelfDate(postor)}
+                            className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all ${
+                              isSelected ? 'bg-purple-500 text-white' : 'bg-purple-50 text-purple-600 hover:bg-purple-100'
+                            }`}>
+                            {isSelected ? '🎲 Salgo con este' : '🎲 Salir yo solo'}
+                          </button>
+                        </div>
                       )}
-                      {submitted && isSelected && <p className="mt-2 text-sm font-bold text-purple-600">🎲 Cita propia</p>}
-                    </PostorCard>
+                      {submitted && isSelected && (
+                        <div className="px-3 py-2 text-sm font-bold text-center bg-purple-50 text-purple-600">
+                          🎲 Cita propia
+                        </div>
+                      )}
+                    </div>
                   )
                 })}
               </div>

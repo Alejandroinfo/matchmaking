@@ -60,7 +60,9 @@ function nextName() {
 // Generate a single postor with a unique uid
 export function generatePostor(numOptions = 6) {
   const uid = Math.random().toString(36).substring(2, 9)
-  const postor = { uid, name: nextName() }
+  const firstName = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)]
+  const lastName = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)]
+  const postor = { uid, name: `${firstName} ${lastName}` }
   ATTRIBUTES.forEach(attr => {
     const opts = getAttrOptions(attr, numOptions)
     postor[attr.name] = opts[Math.floor(Math.random() * opts.length)]
