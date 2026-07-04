@@ -130,7 +130,7 @@ export default function SelectionScreen({
                       onClick={() => !confirmed && setSelected(postorId)}
                       disabled={confirmed}
                       highlighted
-                      badge={`💌 ${player.name.split(' ')[0]}${role ? ` · ${getRoleLabel(role)}` : ''}`}
+                      badge={`💌 ${player.name.split(' ')[0]}`}
                       mini
                     />
                   )
