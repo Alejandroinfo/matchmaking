@@ -137,7 +137,7 @@ export default function SelectionScreen({
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
           Todos los postores — elige libremente
         </p>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
           {deployedPostors.map(postor => {
             const isRecommended = recsForMe.some(r => r.postorId === postor.id)
             return (
