@@ -1,10 +1,22 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getRoleLabel, getRoleColor } from '../logic/gameLogic'
 import { ALL_POSTORS } from '../data/gameData'
+import { startGame } from '../services/gameService'
 import PersonalityPanel from '../components/PersonalityPanel'
 
-export default function EndScreen({ game, playerId, sortedPlayers, myRoles, myPersonality }) {
+export default function EndScreen({ game, playerId, sortedPlayers, myRoles, myPersonality, roomCode, isHost }) {
   const navigate = useNavigate()
+  const [rematching, setRematching] = useState(false)
+
+  async function handleRematch() {
+    setRematching(true)
+    try {
+      await startGame(roomCode)
+    } finally {
+      setRematching(false)
+    }
+  }
   const ranked = [...sortedPlayers].sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
   const winner = ranked[0]
   const isMe = winner?.id === playerId
@@ -136,9 +148,16 @@ export default function EndScreen({ game, playerId, sortedPlayers, myRoles, myPe
         )
       })}
 
-      <button onClick={() => navigate('/')} className="btn-primary w-full text-lg">
-        Jugar otra vez 💘
-      </button>
+      <div className="flex gap-3">
+        {isHost && (
+          <button onClick={handleRematch} disabled={rematching} className="btn-primary flex-1">
+            {rematching ? '...' : '🔄 Revancha'}
+          </button>
+        )}
+        <button onClick={() => navigate('/')} className={`${isHost ? 'btn-secondary flex-1' : 'btn-primary w-full'}`}>
+          Nuevo juego 💘
+        </button>
+      </div>
       <div className="h-4" />
     </div>
   )

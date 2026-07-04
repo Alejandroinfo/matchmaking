@@ -33,12 +33,15 @@ export default function LobbyScreen({ roomCode, game, playerId, isHost, sortedPl
         <div className="text-center">
           <div className="text-4xl mb-2">💘</div>
           <h1 className="text-2xl font-bold text-gray-800">Sala de espera</h1>
-          <div className="mt-2 inline-flex items-center gap-2 bg-white rounded-2xl px-4 py-2 border border-rose-100 shadow-sm">
-            <span className="text-xs text-gray-500">Código:</span>
-            <span className="font-mono font-bold text-rose-500 text-lg tracking-widest">{roomCode}</span>
-            <button onClick={() => navigator.clipboard.writeText(roomCode)} className="text-xs text-gray-400 hover:text-rose-400">📋</button>
+          <div className="mt-2 flex items-center gap-2 bg-white rounded-2xl px-4 py-2 border border-rose-100 shadow-sm">
+            <span className="text-xs text-gray-500 flex-shrink-0">Link:</span>
+            <span className="text-xs text-rose-500 truncate flex-1">{window.location.href}</span>
+            <button
+              onClick={() => navigator.clipboard.writeText(window.location.href)}
+              className="text-xs text-gray-400 hover:text-rose-400 flex-shrink-0"
+            >📋 Copiar</button>
           </div>
-          <p className="text-xs text-gray-400 mt-1">Comparte este código con tus amigos</p>
+          <p className="text-xs text-gray-400 mt-1">Comparte este link con tus amigos</p>
         </div>
 
         {/* Players */}
@@ -86,24 +89,6 @@ export default function LobbyScreen({ roomCode, game, playerId, isHost, sortedPl
                       onClick={() => handleSetting('totalRounds', n)}
                       className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${
                         settings.totalRounds === n
-                          ? 'bg-rose-500 text-white border-rose-500'
-                          : 'bg-white text-gray-600 border-rose-100 hover:border-rose-300'
-                      }`}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="text-sm text-gray-600 font-medium">Postores por ronda</label>
-                <div className="flex gap-2 mt-1">
-                  {[10, 15, 20].map(n => (
-                    <button
-                      key={n}
-                      onClick={() => handleSetting('numPostors', n)}
-                      className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${
-                        settings.numPostors === n
                           ? 'bg-rose-500 text-white border-rose-500'
                           : 'bg-white text-gray-600 border-rose-100 hover:border-rose-300'
                       }`}

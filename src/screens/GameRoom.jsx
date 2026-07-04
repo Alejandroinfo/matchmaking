@@ -1,5 +1,6 @@
 import { useParams } from 'react-router-dom'
 import { useGame } from '../hooks/useGame'
+import { JoinScreen } from './HomeScreen'
 import LobbyScreen from './LobbyScreen'
 import RecommendationScreen from './RecommendationScreen'
 import SelectionScreen from './SelectionScreen'
@@ -39,6 +40,12 @@ export default function GameRoom() {
     )
   }
 
+  // Player arrived via link but hasn't entered their name yet
+  const playerInRoom = game.players?.[playerId]
+  if (!playerInRoom) {
+    return <JoinScreen />
+  }
+
   // Top nav bar (visible in all phases)
   const Nav = () => (
     <div className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-rose-100 px-4 py-2 flex items-center justify-between max-w-sm mx-auto">
@@ -69,7 +76,7 @@ export default function GameRoom() {
   }
 
   // Finished
-  if (game.status === 'finished' || game.phase === 'end') {
+      if (game.status === 'finished' || game.phase === 'end') {
     return (
       <>
         <Nav />
@@ -79,6 +86,8 @@ export default function GameRoom() {
           sortedPlayers={sortedPlayers}
           myRoles={myRoles}
           myPersonality={myPersonality}
+          roomCode={roomCode}
+          isHost={isHost}
         />
       </>
     )
