@@ -92,6 +92,7 @@ export default function GameRoom() {
           game={game}
           playerId={playerId}
           otherPlayers={otherPlayers}
+          myRoles={myRoles}
           myRecommendations={myRecommendations}
         />
       )}
@@ -101,6 +102,7 @@ export default function GameRoom() {
           game={game}
           playerId={playerId}
           mySelection={mySelection}
+          myRoles={myRoles}
           otherPlayers={otherPlayers}
           sortedPlayers={sortedPlayers}
         />
