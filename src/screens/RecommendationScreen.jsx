@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { submitRecommendations } from '../services/gameService'
+import { ALL_ATTRIBUTES } from '../data/gameData'
 import PersonalityPanel from '../components/PersonalityPanel'
 import PostorCard from '../components/PostorCard'
 import AntagonistTable from '../components/AntagonistTable'
@@ -75,13 +76,20 @@ export default function RecommendationScreen({
                     className={`border-b border-rose-50 last:border-0 pb-3 last:pb-0 cursor-pointer rounded-xl px-2 -mx-2 transition-colors ${isSelected ? 'bg-rose-50' : 'hover:bg-gray-50'}`}
                   >
                     <div className="flex items-center gap-2 mb-2">
-                      <div className="w-6 h-6 rounded-full bg-rose-100 flex items-center justify-center text-xs font-bold text-rose-500">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isSelected ? 'bg-rose-500 text-white' : 'bg-rose-100 text-rose-500'}`}>
                         {p.name.charAt(0)}
                       </div>
-                      <span className="text-sm font-semibold text-gray-700">{p.name}</span>
+                      <span className={`text-sm font-semibold ${isSelected ? 'text-rose-600' : 'text-gray-700'}`}>{p.name}</span>
                       {recs[p.id] && <span className="text-emerald-500 text-xs ml-auto">✓</span>}
                     </div>
                     <PersonalityPanel personality={personality} showValues />
+                    {/* Show current rec for this player on PC sidebar */}
+                    {isSelected && recs[p.id] && (
+                      <div className="hidden lg:flex mt-2 items-center gap-1 text-xs text-rose-600 bg-white rounded-lg px-2 py-1">
+                        <span>💌</span>
+                        <span className="font-medium truncate">{recs[p.id].name}</span>
+                      </div>
+                    )}
                   </div>
                 )
               })}
@@ -114,25 +122,44 @@ export default function RecommendationScreen({
             ))}
           </div>
 
-          {/* Sticky recipient card */}
+          {/* Mobile: compact sticky bar (1 line) */}
           {recipientPlayer && (
-            <div className="sticky top-14 z-10 card border-rose-300 bg-rose-50 shadow-md">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-7 h-7 rounded-full bg-rose-200 flex items-center justify-center text-sm font-bold text-rose-600">
-                  {recipientPlayer.name.charAt(0)}
-                </div>
-                <span className="font-bold text-gray-800">Para: {recipientPlayer.name}</span>
+            <div className="lg:hidden sticky top-14 z-10 bg-rose-50 border border-rose-200 rounded-2xl px-3 py-2 shadow-sm">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-bold text-gray-800 text-sm">Para: {recipientPlayer.name.split(' ')[0]}</span>
+                <span className="text-gray-300">|</span>
+                {recipientPersonality.map((card, i) => {
+                  const attr = ALL_ATTRIBUTES.find(a => a.name === card.attribute)
+                  return (
+                    <span key={card.attribute} className="text-xs text-gray-600 flex items-center gap-0.5">
+                      {attr?.emoji} {card.value}
+                    </span>
+                  )
+                })}
+                {recs[selectedRecipient] && (
+                  <>
+                    <span className="text-gray-300">|</span>
+                    <span className="text-xs text-rose-600 font-medium">💌 {recs[selectedRecipient].name}</span>
+                    {!submitted && (
+                      <button onClick={() => setRecs(prev => { const n = {...prev}; delete n[selectedRecipient]; return n })}
+                        className="text-xs text-rose-400 hover:text-rose-600 ml-auto">✕</button>
+                    )}
+                  </>
+                )}
               </div>
-              <PersonalityPanel personality={recipientPersonality} showValues />
-              {recs[selectedRecipient] && (
-                <div className="mt-2 flex items-center gap-2 bg-white rounded-xl px-3 py-1.5">
-                  <span className="text-rose-500">💌</span>
-                  <span className="text-sm text-rose-700 flex-1 font-semibold">{recs[selectedRecipient].name}</span>
-                  {!submitted && (
-                    <button onClick={() => setRecs(prev => { const n = {...prev}; delete n[selectedRecipient]; return n })}
-                      className="text-xs text-rose-400 hover:text-rose-600">✕ Cambiar</button>
-                  )}
-                </div>
+            </div>
+          )}
+
+          {/* PC: current selection badge (no sticky, sidebar handles the info) */}
+          {recipientPlayer && recs[selectedRecipient] && (
+            <div className="hidden lg:flex items-center gap-2 bg-rose-50 border border-rose-200 rounded-2xl px-3 py-2">
+              <span className="text-rose-500">💌</span>
+              <span className="text-sm text-rose-700 flex-1 font-semibold">
+                Para {recipientPlayer.name.split(' ')[0]}: {recs[selectedRecipient].name}
+              </span>
+              {!submitted && (
+                <button onClick={() => setRecs(prev => { const n = {...prev}; delete n[selectedRecipient]; return n })}
+                  className="text-xs text-rose-400 hover:text-rose-600">✕ Cambiar</button>
               )}
             </div>
           )}
