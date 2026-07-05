@@ -1,12 +1,14 @@
-import { ATTRIBUTES } from '../data/gameData'
+import { getAttributes } from '../data/gameData'
 
-export default function AntagonistTable({ numOptions = 6 }) {
-  const numPairs = numOptions / 2 // 4 options = 2 pairs, 6 options = 3 pairs
+export default function AntagonistTable({ numOptions = 6, numAttributes = 4 }) {
+  const numPairs = numOptions / 2
+  const attributes = getAttributes(numAttributes)
+
   return (
     <div className="card">
       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Tabla de opuestos</p>
       <div className="space-y-3">
-        {ATTRIBUTES.map(attr => (
+        {attributes.map(attr => (
           <div key={attr.name}>
             <p className="text-sm font-semibold text-gray-600 mb-1.5">{attr.emoji} {attr.name}</p>
             <div className="space-y-1">

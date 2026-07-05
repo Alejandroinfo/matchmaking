@@ -1,68 +1,70 @@
 import { nextRound } from '../services/gameService'
-import { ATTRIBUTES } from '../data/gameData'
-
-function PostorAttributes({ postor }) {
-  return (
-    <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 mt-1">
-      {ATTRIBUTES.map(attr => (
-        <div key={attr.name} className="flex items-center gap-1 text-xs">
-          <span>{attr.emoji}</span>
-          <span className="text-gray-600">{postor[attr.name]}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
+import { ATTR_ORDER, ATTR_EMOJI } from '../data/gameData'
 
 export default function RevealScreen({ roomCode, game, playerId, isHost, sortedPlayers }) {
   const results = game.roundResults ?? {}
+  const roundHistory = game.roundHistory ?? []
   const isLastRound = game.round >= game.settings.totalRounds
   const myResult = results[playerId]
+  const recommendations = game.recommendations ?? {}
+
+  // Token changes this round (from last history entry)
+  const lastHistory = roundHistory[roundHistory.length - 1]
+  const tokenChanges = lastHistory?.tokenChanges ?? {}
 
   return (
     <div className="min-h-screen p-4 max-w-2xl mx-auto space-y-4">
       <div className="text-center pt-2">
         <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Ronda {game.round} · Resultados</p>
-        <h2 className="text-xl font-bold text-gray-800 mt-1">¡Resultados! 🎉</h2>
+        <h2 className="text-xl font-bold text-gray-800 mt-1">Resultados de la ronda 🎉</h2>
       </div>
 
-      {/* My dates */}
+      {/* My tokens this round */}
       {myResult && (
-        <div className="card border-rose-200">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Tus citas esta ronda</p>
-          {myResult.acceptedDates?.length === 0 && (
-            <p className="text-sm text-gray-400 italic">No aceptaste ninguna cita esta ronda</p>
-          )}
-          <div className="space-y-2">
-            {(myResult.acceptedDates ?? []).map((d, i) => (
-              <div key={i} className="bg-rose-50 rounded-xl p-2.5 border border-rose-100">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-rose-200 flex items-center justify-center text-xs font-bold text-rose-600">
-                      {d.postor.name.charAt(0)}
-                    </div>
-                    <span className="font-semibold text-gray-800 text-sm">{d.postor.name}</span>
-                  </div>
-                  <span className="text-rose-500 font-bold">{d.matches} ✨</span>
-                </div>
-                <PostorAttributes postor={d.postor} />
-                <p className="text-xs text-amber-600 mt-1.5">
-                  💌 Propuesto por {sortedPlayers.find(p => p.id === d.fromId)?.name.split(' ')[0]}
-                </p>
-              </div>
-            ))}
+        <div className="card border-rose-200 bg-rose-50">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tus tokens esta ronda</p>
+            <div className={`text-lg font-bold ${(tokenChanges[playerId] ?? 0) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+              {(tokenChanges[playerId] ?? 0) >= 0 ? '+' : ''}{tokenChanges[playerId] ?? 0} 🪙
+            </div>
           </div>
-          <p className="text-xs text-gray-400 mt-2 text-center">Los puntos exactos se revelan al final</p>
+          {/* +3 received this round */}
+          <div className="flex items-center gap-2 bg-emerald-50 rounded-xl px-3 py-2 mb-2">
+            <span className="text-xs text-emerald-700 flex-1">+3 tokens de la ronda</span>
+            <span className="text-xs font-bold text-emerald-700">+3 🪙</span>
+          </div>
+          <div className="space-y-1.5">
+            {(myResult.acceptedDates ?? []).map((d, i) => {
+              const fromName = d.fromId ? sortedPlayers.find(p => p.id === d.fromId)?.name.split(' ')[0] : null
+              return (
+                <div key={i} className="flex items-center gap-2 bg-white rounded-xl px-3 py-2">
+                  <span className="text-sm">💚</span>
+                  <span className="text-sm text-gray-700 flex-1 truncate">{d.postor?.name}</span>
+                  <span className="text-xs text-gray-500">{d.matches} ✨</span>
+                  <span className="text-xs text-rose-500 font-medium">-1 🪙</span>
+                  {fromName && <span className="text-xs text-amber-600">→ {fromName} +1</span>}
+                  {!fromName && <span className="text-xs text-gray-400">→ caja</span>}
+                </div>
+              )
+            })}
+            {myResult.acceptedDates?.length === 0 && (
+              <p className="text-sm text-gray-400 italic text-center py-2">No saliste con nadie esta ronda</p>
+            )}
+          </div>
+          <div className="mt-3 flex items-center justify-between bg-white rounded-xl px-3 py-2">
+            <span className="text-sm text-gray-600">Tokens restantes</span>
+            <span className="font-bold text-gray-800">{sortedPlayers.find(p => p.id === playerId)?.tokens ?? 0} 🪙</span>
+          </div>
         </div>
       )}
 
-      {/* All players — full info visible */}
+      {/* All players */}
       <div className="space-y-3">
         {sortedPlayers.filter(p => p.id !== playerId).map(p => {
           const r = results[p.id]
-          // How many of my recommendations this player accepted
-          const myRecForP = game.recommendations?.[playerId]?.[p.id]
-          const pAcceptedMine = myRecForP && r?.acceptedDates?.some(d => d.postor.uid === myRecForP.uid)
+          const myRecForP = recommendations[playerId]?.[p.id]
+          const pAcceptedMine = myRecForP && r?.acceptedDates?.some(d => d.postor?.uid === myRecForP.uid)
+          const pTokenChange = tokenChanges[p.id] ?? 0
 
           return (
             <div key={p.id} className="card">
@@ -73,37 +75,32 @@ export default function RevealScreen({ roomCode, game, playerId, isHost, sortedP
                   </div>
                   <span className="font-semibold text-gray-800">{p.name}</span>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold text-gray-800">{r?.totalOwnPoints > 0 ? '+' : ''}{r?.totalOwnPoints ?? 0} compat</p>
-                  {r?.recPoints > 0 && (
-                    <p className="text-xs text-emerald-600">+{r.recPoints} rec pts</p>
-                  )}
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm font-bold ${pTokenChange >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
+                    {pTokenChange >= 0 ? '+' : ''}{pTokenChange} 🪙
+                  </span>
+                  <span className="text-xs text-gray-500">→ {p.tokens ?? 0} total</span>
                 </div>
               </div>
 
-              {/* Their accepted dates */}
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 {(r?.acceptedDates ?? []).map((d, i) => (
-                  <div key={i} className="bg-gray-50 rounded-lg p-2 flex items-center gap-2">
-                    <span className="text-sm">💚</span>
-                    <span className="text-sm font-medium text-gray-700 flex-1 truncate">{d.postor.name}</span>
+                  <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-1.5">
+                    <span className="text-xs">💚</span>
+                    <span className="text-xs text-gray-700 flex-1 truncate">{d.postor?.name}</span>
                     <span className="text-xs text-gray-500">{d.matches} ✨</span>
-                    <span className={`text-xs font-bold ${d.ownPoints >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
-                      {d.ownPoints > 0 ? '+' : ''}{d.ownPoints} pts
-                    </span>
                   </div>
                 ))}
                 {r?.acceptedDates?.length === 0 && (
-                  <p className="text-xs text-gray-400 italic">Sin citas esta ronda</p>
+                  <p className="text-xs text-gray-400 italic">Sin citas</p>
                 )}
               </div>
 
-              {/* Did they accept my recommendation? */}
               {myRecForP && (
                 <div className={`mt-2 text-xs px-3 py-1.5 rounded-lg font-medium ${
                   pAcceptedMine ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'
                 }`}>
-                  {pAcceptedMine ? '💚 Aceptó tu recomendación → +1 pt para ti' : '❌ Rechazó tu recomendación'}
+                  {pAcceptedMine ? '💚 Aceptó tu recomendación → +1 🪙 para ti' : '❌ Rechazó tu recomendación'}
                 </div>
               )}
             </div>
@@ -111,22 +108,17 @@ export default function RevealScreen({ roomCode, game, playerId, isHost, sortedP
         })}
       </div>
 
-      {/* Scoreboard */}
+      {/* Token scoreboard */}
       <div className="card">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Puntuación acumulada</p>
-        {[...sortedPlayers].sort((a, b) => (b.score ?? 0) - (a.score ?? 0)).map((p, i) => {
-          const isMe = p.id === playerId
-          return (
-            <div key={p.id} className="flex items-center gap-3 py-2 border-b border-rose-50 last:border-0">
-              <span className="text-lg">{['🥇','🥈','🥉'][i] ?? '▪️'}</span>
-              <span className="font-medium text-gray-700 flex-1">{p.name} {isMe && '(tú)'}</span>
-              <span className="font-bold text-gray-800">
-                {isMe ? '???' : `${Math.round((p.score ?? 0) * 10) / 10} pts`}
-              </span>
-            </div>
-          )
-        })}
-        <p className="text-xs text-gray-400 text-center mt-2">Tu puntuación se revela al final</p>
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Tokens actuales</p>
+        {[...sortedPlayers].sort((a, b) => (b.tokens ?? 0) - (a.tokens ?? 0)).map((p, i) => (
+          <div key={p.id} className="flex items-center gap-3 py-2 border-b border-rose-50 last:border-0">
+            <span className="text-lg">{['🥇','🥈','🥉'][i] ?? '▪️'}</span>
+            <span className="font-medium text-gray-700 flex-1">{p.name} {p.id === playerId && '(tú)'}</span>
+            <span className="font-bold text-gray-800">{p.tokens ?? 0} 🪙</span>
+          </div>
+        ))}
+        <p className="text-xs text-gray-400 text-center mt-2">Puntuación final = tokens + soulmate ×2</p>
       </div>
 
       {isHost ? (

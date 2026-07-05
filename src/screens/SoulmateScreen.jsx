@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { submitSoulmateSelection } from '../services/gameService'
-import { ATTRIBUTES, ANTAGONISTS, getAttrOptions } from '../data/gameData'
+import { getAttributes, ANTAGONISTS, getAttrOptions } from '../data/gameData'
+import PersonalNotes from '../components/PersonalNotes'
 
 export default function SoulmateScreen({ roomCode, game, playerId, sortedPlayers }) {
   const numOptions = game.settings?.numOptions ?? 6
+  const numAttributes = game.settings?.numAttributes ?? 4
+  const ATTRIBUTES = getAttributes(numAttributes)
   const soulmateSelections = game.soulmateSelections ?? {}
   const whoConfirmed = Object.keys(soulmateSelections)
 
@@ -54,6 +57,9 @@ export default function SoulmateScreen({ roomCode, game, playerId, sortedPlayers
           )
         })}
       </div>
+
+      {/* Personal notes for reference */}
+      <PersonalNotes roomCode={roomCode} playerId={playerId} />
 
       {/* Attribute pickers */}
       <div className="space-y-4">

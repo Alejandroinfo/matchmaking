@@ -3,6 +3,7 @@ import { submitSwipes } from '../services/gameService'
 import { ATTRIBUTES } from '../data/gameData'
 import PersonalityPanel from '../components/PersonalityPanel'
 import PostorCard from '../components/PostorCard'
+import PersonalNotes from '../components/PersonalNotes'
 
 export default function SwipeScreen({ roomCode, game, playerId, otherPlayers, mySwipes, myHand, sortedPlayers }) {
   const recommendations = game.recommendations ?? {}
@@ -93,6 +94,7 @@ export default function SwipeScreen({ roomCode, game, playerId, otherPlayers, my
               ))}
             </div>
           </div>
+          <PersonalNotes roomCode={roomCode} playerId={playerId} />
         </div>
 
         {/* RIGHT */}

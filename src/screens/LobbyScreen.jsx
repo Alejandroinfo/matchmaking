@@ -92,6 +92,22 @@ export default function LobbyScreen({ roomCode, game, playerId, isHost, sortedPl
                 </div>
               </div>
               <div>
+                <label className="text-sm text-gray-600 font-medium">Atributos por jugador</label>
+                <div className="flex gap-2 mt-1">
+                  {[4, 5].map(n => (
+                    <button key={n} onClick={() => handleSetting('numAttributes', n)}
+                      className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                        settings.numAttributes === n ? 'bg-rose-500 text-white border-rose-500' : 'bg-white text-gray-600 border-rose-100 hover:border-rose-300'
+                      }`}>
+                      {n} atributos
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  {settings.numAttributes === 5 ? 'Añade Intereses (Arte↔Ciencia, Naturaleza↔Ciudad, Música↔Silencio)' : '4 atributos — configuración base'}
+                </p>
+              </div>
+              <div>
                 <label className="text-sm text-gray-600 font-medium">Opciones por atributo</label>
                 <div className="flex gap-2 mt-1">
                   {[4, 6].map(n => (

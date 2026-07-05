@@ -4,6 +4,7 @@ import PersonalityPanel from '../components/PersonalityPanel'
 import PostorCard from '../components/PostorCard'
 import AntagonistTable from '../components/AntagonistTable'
 import MatchHistory from '../components/MatchHistory'
+import PersonalNotes from '../components/PersonalNotes'
 
 export default function RecommendationScreen({
   roomCode, game, playerId, otherPlayers, myHand, myRecommendations, roundHistory
@@ -91,10 +92,12 @@ export default function RecommendationScreen({
             <MatchHistory roundHistory={roundHistory} playerId={playerId} players={game.players} />
           )}
 
+          <PersonalNotes roomCode={roomCode} playerId={playerId} />
+
           <button onClick={() => setShowAntagonists(v => !v)} className="btn-secondary w-full text-sm">
             {showAntagonists ? '▲ Ocultar opuestos' : '▼ Ver tabla de opuestos'}
           </button>
-          {showAntagonists && <AntagonistTable numOptions={game.settings?.numOptions ?? 6} />}
+          {showAntagonists && <AntagonistTable numOptions={game.settings?.numOptions ?? 6} numAttributes={game.settings?.numAttributes ?? 4} />}
         </div>
 
         {/* RIGHT: recipient + hand */}
@@ -137,7 +140,7 @@ export default function RecommendationScreen({
           {/* Hand */}
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Tu mano ({myHand.length})</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {myHand.map(postor => {
                 const assignedTo = Object.entries(recs).find(([, p]) => p?.uid === postor.uid)
                 const assignedName = assignedTo ? otherPlayers.find(p => p.id === assignedTo[0])?.name.split(' ')[0] : null
