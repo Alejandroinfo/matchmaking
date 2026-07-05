@@ -11,15 +11,15 @@ export default function RecommendationScreen({
   roomCode, game, playerId, otherPlayers, myHand, myRecommendations, roundHistory
 }) {
   const [selectedRecipient, setSelectedRecipient] = useState(otherPlayers[0]?.id ?? null)
-  // recs: { [toId]: postorObject }
   const [recs, setRecs] = useState(myRecommendations)
-  const [submitted, setSubmitted] = useState(Object.keys(myRecommendations).length === otherPlayers.length && otherPlayers.length > 0)
+  const [submitted, setSubmitted] = useState(
+    Object.keys(myRecommendations).length === otherPlayers.length && otherPlayers.length > 0
+  )
   const [loading, setLoading] = useState(false)
   const [showAntagonists, setShowAntagonists] = useState(false)
 
   const allDone = otherPlayers.every(p => recs[p.id] != null)
   const whoSubmitted = Object.keys(game.recommendations ?? {})
-  const usedUids = new Set(Object.values(recs).filter(Boolean).map(p => p.uid))
 
   function pickPostor(postor) {
     if (submitted) return
@@ -39,15 +39,19 @@ export default function RecommendationScreen({
 
   const recipientPlayer = otherPlayers.find(p => p.id === selectedRecipient)
   const recipientPersonality = game.personalities?.[selectedRecipient] ?? []
+  const numOptions = game.settings?.numOptions ?? 6
+  const numAttributes = game.settings?.numAttributes ?? 4
 
   return (
-    <div className="min-h-screen p-4 max-w-5xl mx-auto space-y-4">
+    <div className="min-h-screen p-4 max-w-6xl mx-auto space-y-4">
+
+      {/* Header */}
       <div className="text-center pt-2">
         <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Ronda {game.round} · Recomienda</p>
         <h2 className="text-lg font-bold text-gray-800 mt-1">Elige de tu mano un postor para cada jugador</h2>
       </div>
 
-      {/* Progress */}
+      {/* Submitted progress */}
       <div className="card flex items-center gap-2 py-2 flex-wrap">
         <span className="text-xs text-gray-500">Enviados:</span>
         {Object.keys(game.players ?? {}).map(pid => {
@@ -62,115 +66,127 @@ export default function RecommendationScreen({
         })}
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-4">
-        {/* LEFT: personalities + history */}
-        <div className="lg:w-72 flex-shrink-0 space-y-4">
-          <div className="card">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Personalidades</p>
-            <div className="space-y-4">
-              {otherPlayers.map(p => {
-                const personality = game.personalities?.[p.id] ?? []
-                const isSelected = p.id === selectedRecipient
-                return (
-                  <div key={p.id} onClick={() => setSelectedRecipient(p.id)}
-                    className={`border-b border-rose-50 last:border-0 pb-3 last:pb-0 cursor-pointer rounded-xl px-2 -mx-2 transition-colors ${isSelected ? 'bg-rose-50' : 'hover:bg-gray-50'}`}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isSelected ? 'bg-rose-500 text-white' : 'bg-rose-100 text-rose-500'}`}>
-                        {p.name.charAt(0)}
-                      </div>
-                      <span className={`text-sm font-semibold ${isSelected ? 'text-rose-600' : 'text-gray-700'}`}>{p.name}</span>
-                      {recs[p.id] && <span className="text-emerald-500 text-xs ml-auto">✓</span>}
-                    </div>
-                    <PersonalityPanel personality={personality} showValues />
-                    {/* Show current rec for this player on PC sidebar */}
-                    {isSelected && recs[p.id] && (
-                      <div className="hidden lg:flex mt-2 items-center gap-1 text-xs text-rose-600 bg-white rounded-lg px-2 py-1">
-                        <span>💌</span>
-                        <span className="font-medium truncate">{recs[p.id].name}</span>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-          {roundHistory.length > 0 && (
-            <MatchHistory roundHistory={roundHistory} playerId={playerId} players={game.players} />
-          )}
-
-          <PersonalNotes roomCode={roomCode} playerId={playerId} />
-
-          <button onClick={() => setShowAntagonists(v => !v)} className="btn-secondary w-full text-sm">
-            {showAntagonists ? '▲ Ocultar opuestos' : '▼ Ver tabla de opuestos'}
-          </button>
-          {showAntagonists && <AntagonistTable numOptions={game.settings?.numOptions ?? 6} numAttributes={game.settings?.numAttributes ?? 4} />}
-        </div>
-
-        {/* RIGHT: recipient + hand */}
-        <div className="flex-1 space-y-4">
-          {/* Recipient tabs */}
-          <div className="flex gap-2 flex-wrap">
-            {otherPlayers.map(p => (
-              <button key={p.id} onClick={() => setSelectedRecipient(p.id)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-2xl border text-sm font-semibold transition-all ${
-                  selectedRecipient === p.id ? 'bg-rose-500 text-white border-rose-500' : 'bg-white text-gray-600 border-rose-100 hover:border-rose-300'
-                }`}>
-                {p.name.split(' ')[0]} {recs[p.id] ? '✓' : ''}
-              </button>
-            ))}
-          </div>
-
-          {/* Mobile: compact sticky bar (1 line) */}
-          {recipientPlayer && (
-            <div className="lg:hidden sticky top-14 z-10 bg-rose-50 border border-rose-200 rounded-2xl px-3 py-2 shadow-sm">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-bold text-gray-800 text-sm">Para: {recipientPlayer.name.split(' ')[0]}</span>
+      {/* ── MOBILE: compact sticky bar ── */}
+      {recipientPlayer && (
+        <div className="lg:hidden sticky top-14 z-10 bg-rose-50 border border-rose-200 rounded-2xl px-3 py-2 shadow-sm">
+          <div className="flex items-center gap-2 flex-wrap text-xs">
+            <span className="font-bold text-gray-800">Para: {recipientPlayer.name.split(' ')[0]}</span>
+            <span className="text-gray-300">|</span>
+            {recipientPersonality.map(card => {
+              const attr = ALL_ATTRIBUTES.find(a => a.name === card.attribute)
+              return <span key={card.attribute} className="text-gray-600">{attr?.emoji} {card.value}</span>
+            })}
+            {recs[selectedRecipient] && (
+              <>
                 <span className="text-gray-300">|</span>
-                {recipientPersonality.map((card, i) => {
-                  const attr = ALL_ATTRIBUTES.find(a => a.name === card.attribute)
-                  return (
-                    <span key={card.attribute} className="text-xs text-gray-600 flex items-center gap-0.5">
-                      {attr?.emoji} {card.value}
-                    </span>
-                  )
-                })}
-                {recs[selectedRecipient] && (
-                  <>
-                    <span className="text-gray-300">|</span>
-                    <span className="text-xs text-rose-600 font-medium">💌 {recs[selectedRecipient].name}</span>
-                    {!submitted && (
-                      <button onClick={() => setRecs(prev => { const n = {...prev}; delete n[selectedRecipient]; return n })}
-                        className="text-xs text-rose-400 hover:text-rose-600 ml-auto">✕</button>
-                    )}
-                  </>
+                <span className="text-rose-600 font-medium">💌 {recs[selectedRecipient].name}</span>
+                {!submitted && (
+                  <button onClick={() => setRecs(prev => { const n={...prev}; delete n[selectedRecipient]; return n })}
+                    className="text-rose-400 hover:text-rose-600 ml-auto">✕</button>
                 )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── MOBILE: recipient tabs ── */}
+      <div className="lg:hidden flex gap-2 flex-wrap">
+        {otherPlayers.map(p => (
+          <button key={p.id} onClick={() => setSelectedRecipient(p.id)}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-2xl border text-sm font-semibold transition-all ${
+              selectedRecipient === p.id ? 'bg-rose-500 text-white border-rose-500' : 'bg-white text-gray-600 border-rose-100 hover:border-rose-300'
+            }`}>
+            {p.name.split(' ')[0]} {recs[p.id] ? '✓' : ''}
+          </button>
+        ))}
+      </div>
+
+      {/* ── MAIN LAYOUT ── */}
+      <div className="flex flex-col lg:flex-row gap-4 lg:items-start">
+
+        {/* ── LEFT: PC sticky panel (selected recipient only) ── */}
+        <div className="hidden lg:block lg:w-80 flex-shrink-0">
+          <div className="sticky top-14 space-y-4">
+
+            {/* Recipient switcher */}
+            <div className="card">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Recomendando para</p>
+              <div className="flex flex-wrap gap-2">
+                {otherPlayers.map(p => (
+                  <button key={p.id} onClick={() => setSelectedRecipient(p.id)}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border text-sm font-semibold transition-all ${
+                      selectedRecipient === p.id
+                        ? 'bg-rose-500 text-white border-rose-500'
+                        : 'bg-white text-gray-600 border-rose-100 hover:border-rose-300'
+                    }`}>
+                    {p.name.split(' ')[0]}
+                    {recs[p.id] && <span className="text-emerald-300 text-xs ml-0.5">✓</span>}
+                  </button>
+                ))}
               </div>
             </div>
-          )}
 
-          {/* PC: current selection badge (no sticky, sidebar handles the info) */}
-          {recipientPlayer && recs[selectedRecipient] && (
-            <div className="hidden lg:flex items-center gap-2 bg-rose-50 border border-rose-200 rounded-2xl px-3 py-2">
-              <span className="text-rose-500">💌</span>
-              <span className="text-sm text-rose-700 flex-1 font-semibold">
-                Para {recipientPlayer.name.split(' ')[0]}: {recs[selectedRecipient].name}
-              </span>
-              {!submitted && (
-                <button onClick={() => setRecs(prev => { const n = {...prev}; delete n[selectedRecipient]; return n })}
-                  className="text-xs text-rose-400 hover:text-rose-600">✕ Cambiar</button>
-              )}
-            </div>
-          )}
+            {/* Selected recipient personality */}
+            {recipientPlayer && (
+              <div className="card border-rose-200 bg-rose-50">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-7 h-7 rounded-full bg-rose-500 flex items-center justify-center text-sm font-bold text-white">
+                    {recipientPlayer.name.charAt(0)}
+                  </div>
+                  <span className="font-bold text-gray-800">{recipientPlayer.name}</span>
+                </div>
+                <PersonalityPanel personality={recipientPersonality} showValues />
+                {recs[selectedRecipient] && (
+                  <div className="mt-3 flex items-center gap-2 bg-white rounded-xl px-3 py-2">
+                    <span className="text-rose-500">💌</span>
+                    <span className="text-sm text-rose-700 flex-1 font-semibold truncate">{recs[selectedRecipient].name}</span>
+                    {!submitted && (
+                      <button onClick={() => setRecs(prev => { const n={...prev}; delete n[selectedRecipient]; return n })}
+                        className="text-xs text-rose-400 hover:text-rose-600 flex-shrink-0">✕</button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {roundHistory.length > 0 && (
+              <MatchHistory roundHistory={roundHistory} playerId={playerId} players={game.players} />
+            )}
+            <PersonalNotes roomCode={roomCode} playerId={playerId} />
+            <button onClick={() => setShowAntagonists(v => !v)} className="btn-secondary w-full text-sm">
+              {showAntagonists ? '▲ Ocultar opuestos' : '▼ Ver tabla de opuestos'}
+            </button>
+            {showAntagonists && <AntagonistTable numOptions={numOptions} numAttributes={numAttributes} />}
+          </div>
+        </div>
+
+        {/* ── RIGHT: hand cards (scrollable) ── */}
+        <div className="flex-1 space-y-4">
+
+          {/* Mobile: extras */}
+          <div className="lg:hidden space-y-3">
+            {roundHistory.length > 0 && (
+              <MatchHistory roundHistory={roundHistory} playerId={playerId} players={game.players} />
+            )}
+            <PersonalNotes roomCode={roomCode} playerId={playerId} />
+            <button onClick={() => setShowAntagonists(v => !v)} className="btn-secondary w-full text-sm">
+              {showAntagonists ? '▲ Ocultar opuestos' : '▼ Ver tabla de opuestos'}
+            </button>
+            {showAntagonists && <AntagonistTable numOptions={numOptions} numAttributes={numAttributes} />}
+          </div>
 
           {/* Hand */}
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Tu mano ({myHand.length})</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+              Tu mano ({myHand.length})
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {myHand.map(postor => {
                 const assignedTo = Object.entries(recs).find(([, p]) => p?.uid === postor.uid)
-                const assignedName = assignedTo ? otherPlayers.find(p => p.id === assignedTo[0])?.name.split(' ')[0] : null
+                const assignedName = assignedTo
+                  ? otherPlayers.find(p => p.id === assignedTo[0])?.name.split(' ')[0]
+                  : null
                 return (
                   <div key={postor.uid} onClick={() => !submitted && pickPostor(postor)} className="cursor-pointer">
                     <PostorCard
@@ -184,9 +200,12 @@ export default function RecommendationScreen({
             </div>
           </div>
 
+          {/* Submit */}
           {!submitted ? (
             <button onClick={handleSubmit} disabled={!allDone || loading} className="btn-primary w-full sticky bottom-4">
-              {loading ? 'Enviando...' : allDone ? '✓ Enviar recomendaciones' : `Faltan ${otherPlayers.length - Object.keys(recs).length} por asignar`}
+              {loading ? 'Enviando...' : allDone
+                ? '✓ Enviar recomendaciones'
+                : `Faltan ${otherPlayers.length - Object.keys(recs).length} por asignar`}
             </button>
           ) : (
             <div className="card text-center py-4">
