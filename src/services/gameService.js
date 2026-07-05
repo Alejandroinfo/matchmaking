@@ -23,7 +23,7 @@ export async function createRoom(playerName) {
   await setDoc(doc(db, 'games', roomCode), {
     hostId: playerId,
     status: 'lobby',
-    settings: { totalRounds: 3, numOptions: 6, numAttributes: 4 },
+    settings: { totalRounds: 3, numOptions: 6, numAttributes: 4, pitchTime: 60 },
     round: 0,
     phase: null,
     players: { [playerId]: { name: playerName, tokens: 0, score: 0, joinOrder: 0 } },
@@ -94,6 +94,7 @@ export async function startGame(roomCode) {
     selfDates: {},
     roundResults: {},
     roundHistory: [],
+    matchmakingTrack: {},
   })
 }
 
@@ -105,7 +106,7 @@ export async function submitRecommendations(roomCode, playerId, recommendations)
   const data = snap.data()
   const playerIds = Object.keys(data.players)
   const allSubmitted = playerIds.every(pid => data.recommendations?.[pid])
-  if (allSubmitted) await updateDoc(ref, { phase: 'swipe' })
+  if (allSubmitted) await updateDoc(ref, { phase: 'pitch' })
 }
 
 export async function submitSwipes(roomCode, playerId, swipeDecisions, selfDatePostor = null) {
@@ -175,11 +176,29 @@ export async function submitSwipes(roomCode, playerId, swipeDecisions, selfDateP
       recommendations: data.recommendations ?? {},
     }]
 
+    // Compute matchmaking track: per accepted recommended date, add its matches to recommender's track
+    const trackGains = {}
+    playerIds.forEach(pid => { trackGains[pid] = 0 })
+    playerIds.forEach(pid => {
+      roundResults[pid].acceptedDates
+        .filter(d => d.fromId)
+        .forEach(d => { trackGains[d.fromId] = (trackGains[d.fromId] ?? 0) + d.matches })
+    })
+
+    const updatedTrack = { ...(data.matchmakingTrack ?? {}) }
+    playerIds.forEach(pid => {
+      updatedTrack[pid] = (updatedTrack[pid] ?? 0) + trackGains[pid]
+    })
+
+    const goToVote = data.settings?.enableVoting !== false
+
     await updateDoc(ref, {
       phase: 'reveal',
       roundResults,
       players: updatedPlayers,
       roundHistory,
+      matchmakingTrack: updatedTrack,
+      matchmakingTrackGains: trackGains,
     })
   }
 }
@@ -233,14 +252,21 @@ export async function submitSoulmateSelection(roomCode, playerId, description) {
       soulmateResults[pid] = { ownPoints: ownPoints * 2, matches, description: data.soulmateSelections[pid] }
     })
 
-    // Final score = remaining tokens (1pt each) + soulmate points
+    // Award matchmaking track bonus: top scorer(s) get +3
+    const track = data.matchmakingTrack ?? {}
+    const maxTrack = playerIds.length > 0 ? Math.max(...playerIds.map(pid => track[pid] ?? 0)) : 0
+    const trackWinners = maxTrack > 0 ? playerIds.filter(pid => (track[pid] ?? 0) === maxTrack) : []
+
+    // Final score = remaining tokens + soulmate points + matchmaking bonus
     const updatedPlayers = { ...data.players }
     playerIds.forEach(pid => {
       const tokens = updatedPlayers[pid].tokens ?? 0
       const soulmatePoints = soulmateResults[pid].ownPoints
+      const matchmakingBonus = trackWinners.includes(pid) ? 3 : 0
       updatedPlayers[pid] = {
         ...updatedPlayers[pid],
-        score: tokens + soulmatePoints,
+        score: tokens + soulmatePoints + matchmakingBonus,
+        matchmakingBonus,
       }
     })
 
@@ -249,6 +275,7 @@ export async function submitSoulmateSelection(roomCode, playerId, description) {
       phase: 'end',
       soulmateResults,
       players: updatedPlayers,
+      matchmakingWinners: trackWinners,
     })
   }
 }

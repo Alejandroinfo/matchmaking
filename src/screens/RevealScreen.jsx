@@ -11,12 +11,46 @@ export default function RevealScreen({ roomCode, game, playerId, isHost, sortedP
   // Token changes this round (from last history entry)
   const lastHistory = roundHistory[roundHistory.length - 1]
   const tokenChanges = lastHistory?.tokenChanges ?? {}
+  const matchmakingTrack = game.matchmakingTrack ?? {}
+  const trackGains = game.matchmakingTrackGains ?? {}
+  const maxTrack = Math.max(0, ...Object.values(matchmakingTrack))
 
   return (
     <div className="min-h-screen p-4 max-w-2xl mx-auto space-y-4">
       <div className="text-center pt-2">
         <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Ronda {game.round} · Resultados</p>
         <h2 className="text-xl font-bold text-gray-800 mt-1">Resultados de la ronda 🎉</h2>
+      </div>
+
+      {/* Matchmaking track */}
+      <div className="card">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+          🏹 Track de matchmaking <span className="text-gray-400 font-normal">(líder gana +3 pts al final)</span>
+        </p>
+        <div className="space-y-2">
+          {[...sortedPlayers]
+            .sort((a, b) => (matchmakingTrack[b.id] ?? 0) - (matchmakingTrack[a.id] ?? 0))
+            .map(p => {
+              const total = matchmakingTrack[p.id] ?? 0
+              const gain = trackGains[p.id] ?? 0
+              const pct = maxTrack > 0 ? (total / maxTrack) * 100 : 0
+              const isMe = p.id === playerId
+              return (
+                <div key={p.id} className={`space-y-1 ${isMe ? 'font-semibold' : ''}`}>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-700">{p.name.split(' ')[0]} {isMe && '(tú)'}</span>
+                    <span className="text-gray-500">
+                      {total} pts {gain > 0 && <span className="text-emerald-600">+{gain} esta ronda</span>}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-2">
+                    <div className={`h-2 rounded-full transition-all ${total === maxTrack && maxTrack > 0 ? 'bg-rose-500' : 'bg-rose-200'}`}
+                      style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              )
+            })}
+        </div>
       </div>
 
       {/* My tokens this round */}

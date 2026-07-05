@@ -11,6 +11,8 @@ export default function EndScreen({ game, playerId, sortedPlayers, myPersonality
   const ranked = [...sortedPlayers].sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
   const winner = ranked[0]
   const personalities = game.personalities ?? {}
+  const matchmakingTrack = game.matchmakingTrack ?? {}
+  const matchmakingWinners = game.matchmakingWinners ?? []
   const soulmateResults = game.soulmateResults ?? {}
   const roundHistory = game.roundHistory ?? []
   const numAttributes = game.settings?.numAttributes ?? 4
@@ -49,6 +51,7 @@ export default function EndScreen({ game, playerId, sortedPlayers, myPersonality
               <div className="flex gap-3 mt-1 ml-11 text-xs text-gray-500">
                 <span>🪙 {finalTokens} tokens</span>
                 <span>+ 💞 {soulmatePoints > 0 ? '+' : ''}{soulmatePoints} soulmate</span>
+                {matchmakingWinners.includes(p.id) && <span className="text-rose-500">+ 🏹 +3 matchmaking</span>}
               </div>
             </div>
           )
@@ -81,6 +84,19 @@ export default function EndScreen({ game, playerId, sortedPlayers, myPersonality
               <p className="text-xs text-gray-400 mb-1">Personalidad real</p>
               <PersonalityPanel personality={personalities[p.id] ?? []} showValues />
             </div>
+
+            {/* Matchmaking track */}
+            {(matchmakingTrack[p.id] ?? 0) > 0 && (
+              <div className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm ${
+                matchmakingWinners.includes(p.id) ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50'
+              }`}>
+                <span className="text-gray-600">🏹 Track de matchmaking</span>
+                <span className="font-bold text-gray-800">
+                  {matchmakingTrack[p.id]} pts
+                  {matchmakingWinners.includes(p.id) && <span className="text-amber-600 ml-1">+3 🏆</span>}
+                </span>
+              </div>
+            )}
 
             {/* Token history per round */}
             <div>

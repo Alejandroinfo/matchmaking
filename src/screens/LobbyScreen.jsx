@@ -108,6 +108,20 @@ export default function LobbyScreen({ roomCode, game, playerId, isHost, sortedPl
                 </p>
               </div>
               <div>
+                <label className="text-sm text-gray-600 font-medium">Tiempo de pitch</label>
+                <div className="flex gap-2 mt-1">
+                  {[60, 90, 120].map(n => (
+                    <button key={n} onClick={() => handleSetting('pitchTime', n)}
+                      className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                        settings.pitchTime === n ? 'bg-rose-500 text-white border-rose-500' : 'bg-white text-gray-600 border-rose-100 hover:border-rose-300'
+                      }`}>
+                      {n}s
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400 mt-1">Tiempo para convencer antes del swipe</p>
+              </div>
+              <div>
                 <label className="text-sm text-gray-600 font-medium">Opciones por atributo</label>
                 <div className="flex gap-2 mt-1">
                   {[4, 6].map(n => (

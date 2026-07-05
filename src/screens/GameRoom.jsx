@@ -3,6 +3,7 @@ import { useGame } from '../hooks/useGame'
 import { JoinScreen } from './HomeScreen'
 import LobbyScreen from './LobbyScreen'
 import RecommendationScreen from './RecommendationScreen'
+import PitchScreen from './PitchScreen'
 import SwipeScreen from './SwipeScreen'
 import RevealScreen from './RevealScreen'
 import SoulmateScreen from './SoulmateScreen'
@@ -83,11 +84,23 @@ export default function GameRoom() {
           myRecommendations={myRecommendations} roundHistory={roundHistory}
         />
       )}
+      {game.phase === 'pitch' && (
+        <PitchScreen
+          roomCode={roomCode} game={game} playerId={playerId}
+          isHost={isHost} otherPlayers={otherPlayers} sortedPlayers={sortedPlayers}
+        />
+      )}
       {game.phase === 'swipe' && (
         <SwipeScreen
           roomCode={roomCode} game={game} playerId={playerId}
           otherPlayers={otherPlayers} mySwipes={mySwipes}
           myHand={myHand} sortedPlayers={sortedPlayers}
+        />
+      )}
+      {game.phase === 'vote' && (
+        <RevealScreen
+          roomCode={roomCode} game={game} playerId={playerId}
+          isHost={isHost} sortedPlayers={sortedPlayers}
         />
       )}
       {game.phase === 'reveal' && (
