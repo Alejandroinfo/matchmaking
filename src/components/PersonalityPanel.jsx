@@ -1,4 +1,4 @@
-import { ATTRIBUTES, ANTAGONISTS } from '../data/gameData'
+import { ALL_ATTRIBUTES, ANTAGONISTS } from '../data/gameData'
 import { sortedPersonalityDisplay } from '../logic/gameLogic'
 
 export default function PersonalityPanel({ personality = [], showValues = false }) {
@@ -9,7 +9,7 @@ export default function PersonalityPanel({ personality = [], showValues = false 
   return (
     <div className="space-y-2">
       {sorted.map((card) => {
-        const attrDef = ATTRIBUTES.find(a => a.name === card.attribute)
+        const attrDef = ALL_ATTRIBUTES.find(a => a.name === card.attribute)
         const antagonist = ANTAGONISTS[card.value]
         return (
           <div key={card.attribute} className="flex gap-2">

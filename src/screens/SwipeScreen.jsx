@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { submitSwipes } from '../services/gameService'
-import { ATTRIBUTES } from '../data/gameData'
+import { ALL_ATTRIBUTES as ATTRIBUTES } from '../data/gameData'
 import PersonalityPanel from '../components/PersonalityPanel'
 import PostorCard from '../components/PostorCard'
 import PersonalNotes from '../components/PersonalNotes'

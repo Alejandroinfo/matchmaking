@@ -1,4 +1,4 @@
-import { ATTRIBUTES } from '../data/gameData'
+import { ALL_ATTRIBUTES as ATTRIBUTES } from '../data/gameData'
 
 export default function MatchHistory({ roundHistory, playerId, players }) {
   if (!roundHistory?.length) return null
