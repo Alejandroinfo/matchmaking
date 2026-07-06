@@ -6,31 +6,51 @@ import PostorCard from '../components/PostorCard'
 import AntagonistTable from '../components/AntagonistTable'
 import MatchHistory from '../components/MatchHistory'
 import PersonalNotes from '../components/PersonalNotes'
+import EventBanner from '../components/EventBanner'
 
 export default function RecommendationScreen({
   roomCode, game, playerId, otherPlayers, myHand, myRecommendations, roundHistory
 }) {
   const [selectedRecipient, setSelectedRecipient] = useState(otherPlayers[0]?.id ?? null)
   const [recs, setRecs] = useState(myRecommendations)
+  const [recs2, setRecs2] = useState({}) // second rec per player (3-player rule)
+  const [pickingSecond, setPickingSecond] = useState(false) // true when selecting 2nd rec
   const [submitted, setSubmitted] = useState(
     Object.keys(myRecommendations).length === otherPlayers.length && otherPlayers.length > 0
   )
   const [loading, setLoading] = useState(false)
   const [showAntagonists, setShowAntagonists] = useState(false)
 
-  const allDone = otherPlayers.every(p => recs[p.id] != null)
+  const rpp = game.recsPerPlayer ?? 1 // recs per player (2 for 3-player games)
+
+  const allDone = rpp === 1
+    ? otherPlayers.every(p => recs[p.id] != null)
+    : otherPlayers.every(p => recs[p.id] != null && recs2[p.id] != null)
   const whoSubmitted = Object.keys(game.recommendations ?? {})
 
   function pickPostor(postor) {
     if (submitted) return
-    setRecs(prev => ({ ...prev, [selectedRecipient]: postor }))
+    if (rpp === 1) {
+      setRecs(prev => ({ ...prev, [selectedRecipient]: postor }))
+    } else {
+      // 3-player: first click = primary rec, second = secondary rec
+      if (!recs[selectedRecipient]) {
+        setRecs(prev => ({ ...prev, [selectedRecipient]: postor }))
+      } else if (!recs2[selectedRecipient]) {
+        setRecs2(prev => ({ ...prev, [selectedRecipient]: postor }))
+      } else {
+        // Replace primary, clear secondary
+        setRecs(prev => ({ ...prev, [selectedRecipient]: postor }))
+        setRecs2(prev => { const n = {...prev}; delete n[selectedRecipient]; return n })
+      }
+    }
   }
 
   async function handleSubmit() {
     if (!allDone || submitted) return
     setLoading(true)
     try {
-      await submitRecommendations(roomCode, playerId, recs)
+      await submitRecommendations(roomCode, playerId, recs, rpp === 2 ? recs2 : null)
       setSubmitted(true)
     } finally {
       setLoading(false)
@@ -65,6 +85,9 @@ export default function RecommendationScreen({
           )
         })}
       </div>
+
+      {/* Active event */}
+      {game.activeEvent && <EventBanner event={game.activeEvent} />}
 
       {/* ── MOBILE: compact sticky bar ── */}
       {recipientPlayer && (
@@ -138,12 +161,31 @@ export default function RecommendationScreen({
                 </div>
                 <PersonalityPanel personality={recipientPersonality} showValues />
                 {recs[selectedRecipient] && (
-                  <div className="mt-3 flex items-center gap-2 bg-white rounded-xl px-3 py-2">
-                    <span className="text-rose-500">💌</span>
-                    <span className="text-sm text-rose-700 flex-1 font-semibold truncate">{recs[selectedRecipient].name}</span>
-                    {!submitted && (
-                      <button onClick={() => setRecs(prev => { const n={...prev}; delete n[selectedRecipient]; return n })}
-                        className="text-xs text-rose-400 hover:text-rose-600 flex-shrink-0">✕</button>
+                  <div className="mt-3 space-y-1.5">
+                    <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-1.5">
+                      <span className="text-rose-500">💌</span>
+                      <span className="text-sm text-rose-700 flex-1 font-semibold truncate">
+                        {rpp === 2 ? '1ª: ' : ''}{recs[selectedRecipient].name}
+                      </span>
+                      {!submitted && (
+                        <button onClick={() => setRecs(prev => { const n={...prev}; delete n[selectedRecipient]; return n })}
+                          className="text-xs text-rose-400 hover:text-rose-600 flex-shrink-0">✕</button>
+                      )}
+                    </div>
+                    {rpp === 2 && recs2[selectedRecipient] && (
+                      <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-1.5">
+                        <span className="text-rose-400">💌</span>
+                        <span className="text-sm text-rose-600 flex-1 font-semibold truncate">
+                          2ª: {recs2[selectedRecipient].name}
+                        </span>
+                        {!submitted && (
+                          <button onClick={() => setRecs2(prev => { const n={...prev}; delete n[selectedRecipient]; return n })}
+                            className="text-xs text-rose-400 hover:text-rose-600 flex-shrink-0">✕</button>
+                        )}
+                      </div>
+                    )}
+                    {rpp === 2 && !recs2[selectedRecipient] && (
+                      <p className="text-xs text-rose-400 px-3">Elige una 2ª recomendación</p>
                     )}
                   </div>
                 )}
@@ -155,7 +197,7 @@ export default function RecommendationScreen({
             )}
             <PersonalNotes roomCode={roomCode} playerId={playerId} />
             <button onClick={() => setShowAntagonists(v => !v)} className="btn-secondary w-full text-sm">
-              {showAntagonists ? '▲ Ocultar opuestos' : '▼ Ver tabla de opuestos'}
+              {showAntagonists ? '▲ Ocultar ayuda' : '▼ Ver tabla de ayuda'}
             </button>
             {showAntagonists && <AntagonistTable numOptions={numOptions} numAttributes={numAttributes} />}
           </div>
@@ -171,7 +213,7 @@ export default function RecommendationScreen({
             )}
             <PersonalNotes roomCode={roomCode} playerId={playerId} />
             <button onClick={() => setShowAntagonists(v => !v)} className="btn-secondary w-full text-sm">
-              {showAntagonists ? '▲ Ocultar opuestos' : '▼ Ver tabla de opuestos'}
+              {showAntagonists ? '▲ Ocultar ayuda' : '▼ Ver tabla de ayuda'}
             </button>
             {showAntagonists && <AntagonistTable numOptions={numOptions} numAttributes={numAttributes} />}
           </div>
@@ -184,15 +226,19 @@ export default function RecommendationScreen({
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {myHand.map(postor => {
                 const assignedTo = Object.entries(recs).find(([, p]) => p?.uid === postor.uid)
+                const assignedTo2 = Object.entries(recs2).find(([, p]) => p?.uid === postor.uid)
                 const assignedName = assignedTo
-                  ? otherPlayers.find(p => p.id === assignedTo[0])?.name.split(' ')[0]
+                  ? `→ ${otherPlayers.find(p => p.id === assignedTo[0])?.name.split(' ')[0]}`
+                  : assignedTo2
+                  ? `→ ${otherPlayers.find(p => p.id === assignedTo2[0])?.name.split(' ')[0]} (2ª)`
                   : null
+                const isSelected = recs[selectedRecipient]?.uid === postor.uid || recs2[selectedRecipient]?.uid === postor.uid
                 return (
                   <div key={postor.uid} onClick={() => !submitted && pickPostor(postor)} className="cursor-pointer">
                     <PostorCard
                       postor={postor}
-                      selected={recs[selectedRecipient]?.uid === postor.uid}
-                      badge={assignedName ? `→ Para ${assignedName}` : null}
+                      selected={isSelected}
+                      badge={assignedName}
                     />
                   </div>
                 )

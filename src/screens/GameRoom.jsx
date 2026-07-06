@@ -5,6 +5,7 @@ import LobbyScreen from './LobbyScreen'
 import RecommendationScreen from './RecommendationScreen'
 import PitchScreen from './PitchScreen'
 import SwipeScreen from './SwipeScreen'
+import BetScreen from './BetScreen'
 import RevealScreen from './RevealScreen'
 import SoulmateScreen from './SoulmateScreen'
 import EndScreen from './EndScreen'
@@ -46,7 +47,10 @@ export default function GameRoom() {
 
   const Nav = () => (
     <div className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-rose-100 px-4 py-2 flex items-center justify-between max-w-5xl mx-auto">
-      <span className="text-rose-500 font-bold text-sm">💘 Matchmaker</span>
+      <div className="flex items-center gap-2">
+        <span className="text-rose-500 font-bold text-sm">💘 Matchmaker</span>
+        <span className="text-xs text-gray-300 font-mono">v0.11</span>
+      </div>
       <div className="flex items-center gap-3">
         {game.status === 'playing' && (
           <span className="text-xs text-gray-400">Ronda {game.round}/{game.settings.totalRounds}</span>
@@ -101,6 +105,12 @@ export default function GameRoom() {
         <RevealScreen
           roomCode={roomCode} game={game} playerId={playerId}
           isHost={isHost} sortedPlayers={sortedPlayers}
+        />
+      )}
+      {game.phase === 'bet' && (
+        <BetScreen
+          roomCode={roomCode} game={game} playerId={playerId}
+          sortedPlayers={sortedPlayers}
         />
       )}
       {game.phase === 'reveal' && (

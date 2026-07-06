@@ -92,6 +92,38 @@ export default function LobbyScreen({ roomCode, game, playerId, isHost, sortedPl
                 </div>
               </div>
               <div>
+                <label className="text-sm text-gray-600 font-medium">Eventos de ronda</label>
+                <div className="flex gap-2 mt-1">
+                  {[true, false].map(v => (
+                    <button key={String(v)} onClick={() => handleSetting('enableEvents', v)}
+                      className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                        settings.enableEvents === v ? 'bg-rose-500 text-white border-rose-500' : 'bg-white text-gray-600 border-rose-100 hover:border-rose-300'
+                      }`}>
+                      {v ? '✓ Activados' : '✗ Desactivados'}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  {settings.enableEvents ? 'Cada ronda se activa un evento aleatorio' : 'Sin eventos — juego base'}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm text-gray-600 font-medium">Apuesta de matches</label>
+                <div className="flex gap-2 mt-1">
+                  {[true, false].map(v => (
+                    <button key={String(v)} onClick={() => handleSetting('enableBetting', v)}
+                      className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                        settings.enableBetting === v ? 'bg-rose-500 text-white border-rose-500' : 'bg-white text-gray-600 border-rose-100 hover:border-rose-300'
+                      }`}>
+                      {v ? '✓ Activada' : '✗ Desactivada'}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  {settings.enableBetting ? 'Declara tus matches antes del reveal: acierta y recuperas 1🪙 de los tuyos' : 'Sin apuesta — pasa directo al reveal'}
+                </p>
+              </div>
+              <div>
                 <label className="text-sm text-gray-600 font-medium">Atributos por jugador</label>
                 <div className="flex gap-2 mt-1">
                   {[4, 5].map(n => (

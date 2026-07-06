@@ -1,6 +1,7 @@
 import { db } from '../firebase'
 import { doc, setDoc, updateDoc, getDoc, onSnapshot, serverTimestamp } from 'firebase/firestore'
-import { dealPersonalities, dealHands, computeCompatibility } from '../logic/gameLogic'
+import { dealPersonalities, dealHands, computeCompatibility, recsPerPlayer } from '../logic/gameLogic'
+import { drawEvent, getEvent } from '../data/events'
 
 const TOKENS_PER_ROUND = 3
 
@@ -23,7 +24,7 @@ export async function createRoom(playerName) {
   await setDoc(doc(db, 'games', roomCode), {
     hostId: playerId,
     status: 'lobby',
-    settings: { totalRounds: 3, numOptions: 6, numAttributes: 4, pitchTime: 60 },
+    settings: { totalRounds: 3, numOptions: 6, numAttributes: 4, pitchTime: 60, enableBetting: true, enableEvents: false },
     round: 0,
     phase: null,
     players: { [playerId]: { name: playerName, tokens: 0, score: 0, joinOrder: 0 } },
@@ -59,11 +60,24 @@ export function subscribeToGame(roomCode, callback) {
   })
 }
 
-function addRoundTokens(players, playerIds) {
+function addRoundTokens(players, playerIds, tokensOverride = null) {
   const updated = { ...players }
+  const amount = tokensOverride ?? TOKENS_PER_ROUND
   playerIds.forEach(pid => {
-    updated[pid] = { ...updated[pid], tokens: (updated[pid].tokens ?? 0) + TOKENS_PER_ROUND }
+    updated[pid] = { ...updated[pid], tokens: (updated[pid].tokens ?? 0) + amount }
   })
+  return updated
+}
+
+function applyEventRoundStart(players, playerIds, event) {
+  if (!event) return players
+  let updated = { ...players }
+  if (event.lowestTokenBonus) {
+    const minTokens = Math.min(...playerIds.map(pid => updated[pid].tokens ?? 0))
+    playerIds.filter(pid => (updated[pid].tokens ?? 0) === minTokens).forEach(pid => {
+      updated[pid] = { ...updated[pid], tokens: (updated[pid].tokens ?? 0) + event.lowestTokenBonus }
+    })
+  }
   return updated
 }
 
@@ -76,31 +90,41 @@ export async function startGame(roomCode) {
 
   const { numOptions = 6, numAttributes = 4 } = data.settings
   const personalities = dealPersonalities(playerIds, numOptions, numAttributes)
+  const rpp = recsPerPlayer(playerIds.length)
   const hands = dealHands(playerIds, numOptions, numAttributes)
 
-  // Start round 1: give 3 tokens, reset scores
-  const updatedPlayers = addRoundTokens(data.players, playerIds)
+  const enableEvents = data.settings?.enableEvents === true
+  const activeEvent = enableEvents ? drawEvent() : null
+  const tokenAmount = activeEvent?.tokensThisRound ?? TOKENS_PER_ROUND
+  let updatedPlayers = addRoundTokens(data.players, playerIds, tokenAmount)
+  updatedPlayers = applyEventRoundStart(updatedPlayers, playerIds, activeEvent)
   playerIds.forEach(pid => { updatedPlayers[pid].score = 0 })
 
   await updateDoc(ref, {
     status: 'playing',
     round: 1,
-    phase: 'recommendation',
+    phase: activeEvent?.skipPitch ? 'swipe' : 'recommendation',
     personalities,
     hands,
+    recsPerPlayer: rpp,
     players: updatedPlayers,
+    activeEvent: activeEvent ?? null,
     recommendations: {},
+    recommendations2: {},
     swipeDecisions: {},
     selfDates: {},
     roundResults: {},
     roundHistory: [],
     matchmakingTrack: {},
+    carryOverHands: {},
   })
 }
 
-export async function submitRecommendations(roomCode, playerId, recommendations) {
+export async function submitRecommendations(roomCode, playerId, recommendations, recommendations2 = null) {
   const ref = doc(db, 'games', roomCode)
-  await updateDoc(ref, { [`recommendations.${playerId}`]: recommendations })
+  const update = { [`recommendations.${playerId}`]: recommendations }
+  if (recommendations2) update[`recommendations2.${playerId}`] = recommendations2
+  await updateDoc(ref, update)
 
   const snap = await getDoc(ref)
   const data = snap.data()
@@ -133,32 +157,81 @@ export async function submitSwipes(roomCode, playerId, swipeDecisions, selfDateP
     const tokenChanges = {}
     playerIds.forEach(pid => { tokenChanges[pid] = 0 })
 
+    const event = data.activeEvent ?? null
+
     playerIds.forEach(pid => {
       const acceptedDates = []
+      const maxDates = event?.maxDates ?? Infinity
+      let datesAccepted = 0
 
-      // Accepted recommendations: -1 from acceptor → +1 to recommender
-      playerIds.filter(fromId => fromId !== pid).forEach(fromId => {
+      // Accepted recommendations (both primary and secondary for 3-player)
+      const allFromIds = playerIds.filter(fromId => fromId !== pid)
+      allFromIds.forEach(fromId => {
+        if (datesAccepted >= maxDates) return
+        // Check primary rec
         const postor = data.recommendations?.[fromId]?.[pid]
-        if (!postor) return
-        const accepted = data.swipeDecisions?.[pid]?.[postor.uid] === true
-        if (accepted) {
-          const { ownPoints, matches } = computeCompatibility(data.personalities[pid], postor)
-          acceptedDates.push({ postor, fromId, ownPoints, matches })
-          tokenChanges[pid] -= 1
-          tokenChanges[fromId] += 1
+        if (postor) {
+          const accepted = data.swipeDecisions?.[pid]?.[postor.uid] === true
+          if (accepted) {
+            const { ownPoints, matches } = computeCompatibility(data.personalities[pid], postor)
+            acceptedDates.push({ postor, fromId: event?.anonymousRecs ? null : fromId, ownPoints, matches })
+            datesAccepted++
+          }
+        }
+        // Check secondary rec (3-player rule)
+        if (datesAccepted < maxDates) {
+          const postor2 = data.recommendations2?.[fromId]?.[pid]
+          if (postor2) {
+            const accepted2 = data.swipeDecisions?.[pid]?.[postor2.uid] === true
+            if (accepted2) {
+              const { ownPoints, matches } = computeCompatibility(data.personalities[pid], postor2)
+              acceptedDates.push({ postor: postor2, fromId: event?.anonymousRecs ? null : fromId, ownPoints, matches })
+              datesAccepted++
+            }
+          }
         }
       })
 
-      // Self-date: -1 from acceptor → caja (nobody gets it)
-      const selfDate = data.selfDates?.[pid]
-      if (selfDate) {
-        const { ownPoints, matches } = computeCompatibility(data.personalities[pid], selfDate)
-        acceptedDates.push({ postor: selfDate, fromId: null, ownPoints, matches })
-        tokenChanges[pid] -= 1
+      // Self-date (disabled by noSelfDates event)
+      if (!event?.noSelfDates) {
+        const selfDate = data.selfDates?.[pid]
+        if (selfDate && datesAccepted < maxDates) {
+          const { ownPoints, matches } = computeCompatibility(data.personalities[pid], selfDate)
+          acceptedDates.push({ postor: selfDate, fromId: null, ownPoints, matches })
+          datesAccepted++
+        }
       }
 
       roundResults[pid] = { acceptedDates }
     })
+
+    // Token changes with event modifiers
+    playerIds.forEach(pid => {
+      roundResults[pid].acceptedDates.forEach((d, idx) => {
+        const isFree = event?.allDatesFree || (event?.firstDateFree && idx === 0)
+        if (!isFree) {
+          tokenChanges[pid] -= 1
+          if (d.fromId) tokenChanges[d.fromId] += 1
+        }
+      })
+    })
+
+    // mostDatesBonus event
+    if (event?.mostDatesBonus) {
+      const maxAccepted = Math.max(...playerIds.map(pid => roundResults[pid].acceptedDates.length))
+      if (maxAccepted > 0)
+        playerIds.filter(pid => roundResults[pid].acceptedDates.length === maxAccepted)
+          .forEach(pid => { tokenChanges[pid] += 1 })
+    }
+
+    // mostMatchesBonus event
+    if (event?.mostMatchesBonus) {
+      const total = pid => roundResults[pid].acceptedDates.reduce((s, d) => s + d.matches, 0)
+      const maxM = Math.max(...playerIds.map(total))
+      if (maxM > 0)
+        playerIds.filter(pid => total(pid) === maxM)
+          .forEach(pid => { tokenChanges[pid] += 1 })
+    }
 
     // Apply token changes
     const updatedPlayers = { ...data.players }
@@ -168,6 +241,22 @@ export async function submitSwipes(roomCode, playerId, swipeDecisions, selfDateP
         tokens: Math.max(0, (updatedPlayers[pid].tokens ?? 0) + tokenChanges[pid]),
       }
     })
+
+    // Compute carry-over hands if manos sobrantes event
+    const carryOverHands = {}
+    if (event?.carryUnused) {
+      playerIds.forEach(pid => {
+        const usedUids = new Set([
+          ...playerIds.filter(t => t !== pid).flatMap(t => {
+            const r1 = data.recommendations?.[pid]?.[t]
+            const r2 = data.recommendations2?.[pid]?.[t]
+            return [r1?.uid, r2?.uid].filter(Boolean)
+          }),
+          data.selfDates?.[pid]?.uid,
+        ].filter(Boolean))
+        carryOverHands[pid] = (data.hands?.[pid] ?? []).filter(p => !usedUids.has(p.uid))
+      })
+    }
 
     const roundHistory = [...(data.roundHistory ?? []), {
       round: data.round,
@@ -192,13 +281,17 @@ export async function submitSwipes(roomCode, playerId, swipeDecisions, selfDateP
 
     const goToVote = data.settings?.enableVoting !== false
 
+    const goToBet = data.settings?.enableBetting !== false
+
     await updateDoc(ref, {
-      phase: 'reveal',
+      phase: goToBet ? 'bet' : 'reveal',
       roundResults,
       players: updatedPlayers,
       roundHistory,
       matchmakingTrack: updatedTrack,
       matchmakingTrackGains: trackGains,
+      betDeclarations: {},
+      carryOverHands,
     })
   }
 }
@@ -216,20 +309,31 @@ export async function nextRound(roomCode) {
 
   const playerIds = Object.keys(data.players)
   const { numOptions = 6, numAttributes = 4 } = data.settings
-  const hands = dealHands(playerIds, numOptions, numAttributes)
+  const enableEvents = data.settings?.enableEvents === true
+  const activeEvent = enableEvents ? drawEvent() : null
+  const tokenAmount = activeEvent?.tokensThisRound ?? TOKENS_PER_ROUND
+  let updatedPlayers = addRoundTokens(data.players, playerIds, tokenAmount)
+  updatedPlayers = applyEventRoundStart(updatedPlayers, playerIds, activeEvent)
 
-  // Give 3 tokens for new round
-  const updatedPlayers = addRoundTokens(data.players, playerIds)
+  const rpp = recsPerPlayer(playerIds.length)
+  const extraCards = activeEvent?.extraCards ?? 0
+  const carryOver = data.carryOverHands ?? {}
+  const hands = dealHands(playerIds, numOptions, numAttributes, extraCards, carryOver)
 
   await updateDoc(ref, {
     round: next,
-    phase: 'recommendation',
+    phase: activeEvent?.skipPitch ? 'swipe' : 'recommendation',
     hands,
+    recsPerPlayer: rpp,
     players: updatedPlayers,
+    activeEvent: activeEvent ?? null,
     recommendations: {},
+    recommendations2: {},
     swipeDecisions: {},
     selfDates: {},
     roundResults: {},
+    betDeclarations: {},
+    carryOverHands: {},
   })
 }
 

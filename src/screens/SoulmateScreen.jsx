@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { submitSoulmateSelection } from '../services/gameService'
-import { getAttributes, ANTAGONISTS, getAttrOptions } from '../data/gameData'
+import { getAttributes, ANTAGONISTS, getAttrOptions, getPriorityPoints } from '../data/gameData'
 import PersonalNotes from '../components/PersonalNotes'
 
 export default function SoulmateScreen({ roomCode, game, playerId, sortedPlayers }) {
@@ -63,14 +63,23 @@ export default function SoulmateScreen({ roomCode, game, playerId, sortedPlayers
 
       {/* Attribute pickers */}
       <div className="space-y-4">
-        {ATTRIBUTES.map(attr => {
+        {ATTRIBUTES.map((attr, i) => {
+          const weight = getPriorityPoints(numAttributes)[i]
           const options = getAttrOptions(attr, numOptions)
           const selected = description[attr.name]
           return (
             <div key={attr.name} className="card">
-              <p className="text-sm font-bold text-gray-700 mb-3">
-                {attr.emoji} {attr.name}
-              </p>
+              <div className="flex items-center gap-2 mb-3">
+                <span className={`inline-flex items-center justify-center rounded font-bold text-xs w-7 h-5
+                  ${weight === 3 ? 'bg-rose-500 text-white ring-1 ring-rose-300' :
+                    weight === 2 ? 'bg-rose-300 text-white' :
+                    'bg-rose-100 text-rose-400'}`}>
+                  {weight}p
+                </span>
+                <p className="text-sm font-bold text-gray-700">
+                  {attr.emoji} {attr.name}
+                </p>
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 {options.map(opt => {
                   const isSelected = selected === opt

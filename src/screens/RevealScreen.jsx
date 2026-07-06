@@ -1,5 +1,6 @@
 import { nextRound } from '../services/gameService'
 import { ATTR_ORDER, ATTR_EMOJI } from '../data/gameData'
+import EventBanner from '../components/EventBanner'
 
 export default function RevealScreen({ roomCode, game, playerId, isHost, sortedPlayers }) {
   const results = game.roundResults ?? {}
@@ -21,6 +22,8 @@ export default function RevealScreen({ roomCode, game, playerId, isHost, sortedP
         <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Ronda {game.round} · Resultados</p>
         <h2 className="text-xl font-bold text-gray-800 mt-1">Resultados de la ronda 🎉</h2>
       </div>
+
+      {game.activeEvent && <EventBanner event={game.activeEvent} />}
 
       {/* Matchmaking track */}
       <div className="card">
@@ -62,6 +65,26 @@ export default function RevealScreen({ roomCode, game, playerId, isHost, sortedP
               {(tokenChanges[playerId] ?? 0) >= 0 ? '+' : ''}{tokenChanges[playerId] ?? 0} 🪙
             </div>
           </div>
+          {/* Bet result if applicable */}
+          {(() => {
+            const decl = game.betDeclarations?.[playerId]
+            if (!decl || decl.skipped || decl.declared === null) return null
+            const actualTotal = (myResult?.acceptedDates ?? []).reduce((s, d) => s + (d.matches ?? 0), 0)
+            const correct = decl.declared === actualTotal
+            return (
+              <div className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm mb-2 ${
+                correct ? 'bg-emerald-50 border border-emerald-200' : 'bg-rose-100 border border-rose-200'
+              }`}>
+                <span>{correct ? '✓' : '✗'}</span>
+                <span className="flex-1">
+                  Declaraste {decl.declared} matches — real: {actualTotal}
+                </span>
+                <span className={`font-bold ${correct ? 'text-emerald-700' : 'text-gray-400'}`}>
+                  {correct ? '+1 🪙 recuperado' : 'Sin recuperar'}
+                </span>
+              </div>
+            )
+          })()}
           {/* +3 received this round */}
           <div className="flex items-center gap-2 bg-emerald-50 rounded-xl px-3 py-2 mb-2">
             <span className="text-xs text-emerald-700 flex-1">+3 tokens de la ronda</span>

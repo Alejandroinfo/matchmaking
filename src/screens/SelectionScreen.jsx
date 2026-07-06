@@ -105,7 +105,7 @@ export default function SelectionScreen({
           )}
 
           <button onClick={() => setShowAntagonists(v => !v)} className="btn-secondary w-full text-sm">
-            {showAntagonists ? '▲ Ocultar opuestos' : '▼ Ver tabla de opuestos'}
+            {showAntagonists ? '▲ Ocultar ayuda' : '▼ Ver tabla de ayuda'}
           </button>
           {showAntagonists && <AntagonistTable />}
         </div>

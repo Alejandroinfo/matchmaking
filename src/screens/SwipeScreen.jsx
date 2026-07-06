@@ -4,20 +4,42 @@ import { ALL_ATTRIBUTES as ATTRIBUTES } from '../data/gameData'
 import PersonalityPanel from '../components/PersonalityPanel'
 import PostorCard from '../components/PostorCard'
 import PersonalNotes from '../components/PersonalNotes'
+import EventBanner from '../components/EventBanner'
 
 export default function SwipeScreen({ roomCode, game, playerId, otherPlayers, mySwipes, myHand, sortedPlayers }) {
+
+
+
+
+
+
+
+
+
+
+
+
+
   const recommendations = game.recommendations ?? {}
+  const recommendations2 = game.recommendations2 ?? {}
   const personalities = game.personalities ?? {}
   const swipeDecisions = game.swipeDecisions ?? {}
 
-  const recsForMe = otherPlayers
-    .map(p => ({ player: p, postor: recommendations[p.id]?.[playerId] }))
-    .filter(r => r.postor)
+  // All recs for me: primary + secondary (3-player rule)
+  const recsForMe = otherPlayers.flatMap(p => {
+    const r1 = recommendations[p.id]?.[playerId]
+    const r2 = recommendations2[p.id]?.[playerId]
+    const out = []
+    if (r1) out.push({ player: p, postor: r1 })
+    if (r2) out.push({ player: p, postor: r2 })
+    return out
+  })
 
-  // Remaining hand: not used in my recommendations
-  const myUsedUids = new Set(
-    otherPlayers.map(p => recommendations[playerId]?.[p.id]?.uid).filter(Boolean)
-  )
+  // Remaining hand: cards not used in my recommendations
+  const myUsedUids = new Set([
+    ...otherPlayers.map(p => recommendations[playerId]?.[p.id]?.uid),
+    ...otherPlayers.map(p => recommendations2[playerId]?.[p.id]?.uid),
+  ].filter(Boolean))
   const remainingHand = (myHand ?? []).filter(p => !myUsedUids.has(p.uid))
 
   const [swipes, setSwipes] = useState(mySwipes ?? {})
@@ -76,6 +98,9 @@ export default function SwipeScreen({ roomCode, game, playerId, otherPlayers, my
           )
         })}
       </div>
+
+      {/* Active event */}
+      {game.activeEvent && <EventBanner event={game.activeEvent} />}
 
       <div className="flex flex-col lg:flex-row gap-4">
         {/* LEFT: personalities */}

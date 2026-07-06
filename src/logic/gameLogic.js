@@ -22,25 +22,34 @@ export function dealPersonalities(playerIds, numOptions = 6, numAttributes = 4) 
 
   const personalities = {}
   playerIds.forEach(playerId => {
-    const cards = shuffle(attrs.map(attr => ({
+    // Fixed order: always Pasatiempo → Personalidad → Estilo → Valores → Intereses
+    // Position 0 = 3pts, 1 = 2pts, 2 = 2pts, 3 = 1pt, 4 = 1pt
+    const cards = attrs.map(attr => ({
       attribute: attr.name,
       value: pools[attr.name].pop(),
-    })))
+    }))
     personalities[playerId] = cards
   })
   return personalities
 }
 
-// Hand size always 6
-export function dealHands(playerIds, numOptions = 6, numAttributes = 4) {
-  const handSize = 6
-  const total = handSize * playerIds.length
-  const pool = generatePostors(total, numOptions, numAttributes)
+// Hand size always 6, plus extra from events
+export function dealHands(playerIds, numOptions = 6, numAttributes = 4, extraCards = 0, carryOverHands = {}) {
+  const handSize = 6 + extraCards
+  const newCardCount = 6 + extraCards
+  const pool = generatePostors(newCardCount * playerIds.length, numOptions, numAttributes)
   const hands = {}
   playerIds.forEach((pid, i) => {
-    hands[pid] = pool.slice(i * handSize, (i + 1) * handSize)
+    const newCards = pool.slice(i * newCardCount, (i + 1) * newCardCount)
+    const carried = carryOverHands[pid] ?? []
+    hands[pid] = [...carried, ...newCards]
   })
   return hands
+}
+
+// How many postors to recommend per player (2 for 3-player games, 1 otherwise)
+export function recsPerPlayer(numPlayers) {
+  return numPlayers <= 3 ? 2 : 1
 }
 
 export function computeCompatibility(personality, postor) {
@@ -59,12 +68,9 @@ export function computeCompatibility(personality, postor) {
   return { ownPoints, matches }
 }
 
+// Personality is already in fixed attribute order.
+// Just attach weight badges based on position.
 export function sortedPersonalityDisplay(personality) {
-  const attrOrder = getAttributes(personality.length).map(a => a.name)
   const priorityPoints = getPriorityPoints(personality.length)
-  const weightMap = {}
-  personality.forEach((card, i) => { weightMap[card.attribute] = priorityPoints[i] })
-  return [...personality]
-    .sort((a, b) => attrOrder.indexOf(a.attribute) - attrOrder.indexOf(b.attribute))
-    .map(card => ({ ...card, weight: weightMap[card.attribute] }))
+  return personality.map((card, i) => ({ ...card, weight: priorityPoints[i] }))
 }
