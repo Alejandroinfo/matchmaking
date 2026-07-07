@@ -102,6 +102,41 @@ export default function SwipeScreen({ roomCode, game, playerId, otherPlayers, my
       {/* Active event */}
       {game.activeEvent && <EventBanner event={game.activeEvent} />}
 
+      {/* Token counter */}
+      {(() => {
+        const myTokens = game.players?.[playerId]?.tokens ?? 0
+        const acceptedCount = recsForMe.filter(r => swipes[r.postor.uid] === true).length
+          + (selfDate ? 1 : 0)
+        const canAfford = myTokens - acceptedCount
+        return (
+          <div className={`card flex items-center gap-3 py-2.5 border-2 ${
+            canAfford <= 0 ? 'border-rose-400 bg-rose-50' :
+            canAfford === 1 ? 'border-amber-300 bg-amber-50' :
+            'border-emerald-200 bg-emerald-50'
+          }`}>
+            <span className="text-xl">🪙</span>
+            <div className="flex-1">
+              <p className="font-bold text-gray-800 text-sm">
+                {myTokens} tokens disponibles
+              </p>
+              <p className="text-xs text-gray-500">
+                {acceptedCount > 0
+                  ? `${acceptedCount} cita${acceptedCount > 1 ? 's' : ''} seleccionada${acceptedCount > 1 ? 's' : ''} · quedan ${canAfford} tokens`
+                  : `Cada cita que aceptes cuesta 1 token`}
+              </p>
+            </div>
+            {canAfford <= 0 && acceptedCount > 0 && (
+              <span className="text-xs text-rose-600 font-bold">Sin tokens</span>
+            )}
+            {canAfford > 0 && (
+              <span className={`text-sm font-bold ${canAfford === 1 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                +{canAfford} más
+              </span>
+            )}
+          </div>
+        )
+      })()}
+
       <div className="flex flex-col lg:flex-row gap-4">
         {/* LEFT: personalities */}
         <div className="lg:w-72 flex-shrink-0">

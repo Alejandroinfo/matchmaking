@@ -24,6 +24,11 @@ export const ALL_ATTRIBUTES = [
     emoji: '🎵',
     pairs: [['Arte', 'Ciencia'], ['Naturaleza', 'Ciudad'], ['Música', 'Silencio']],
   },
+  {
+    name: 'Humor',
+    emoji: '😄',
+    pairs: [['Sarcástico', 'Literal'], ['Oscuro', 'Ligero'], ['Improv', 'Guionizado']],
+  },
 ]
 
 export const ANTAGONISTS = {}
@@ -39,12 +44,15 @@ export function getAttributes(numAttributes = 4) {
   return ALL_ATTRIBUTES.slice(0, numAttributes)
 }
 
-// Priority points by position (supports 4 or 5 attributes)
+// Priority points by position (4, 5, or 6 attributes)
 export const PRIORITY_POINTS_4 = [3, 2, 2, 1]
 export const PRIORITY_POINTS_5 = [3, 2, 2, 1, 1]
+export const PRIORITY_POINTS_6 = [3, 3, 2, 2, 1, 1]
 
 export function getPriorityPoints(numAttributes = 4) {
-  return numAttributes === 5 ? PRIORITY_POINTS_5 : PRIORITY_POINTS_4
+  if (numAttributes === 6) return PRIORITY_POINTS_6
+  if (numAttributes === 5) return PRIORITY_POINTS_5
+  return PRIORITY_POINTS_4
 }
 
 // Get options for an attribute based on numOptions (4 or 6)

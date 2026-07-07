@@ -4,27 +4,27 @@
 export const EVENTS = [
   {
     id: 1, name: 'Pasatiempo doble', emoji: '🎨',
-    effect: 'Los matches en Pasatiempo valen el doble esta ronda.',
+    effect: 'Los matches en Pasatiempo cuentan doble en el track de matchmaking esta ronda.',
     type: 'auto', attr: 'Pasatiempo', multiplier: 2,
   },
   {
     id: 2, name: 'Personalidad doble', emoji: '✨',
-    effect: 'Los matches en Personalidad valen el doble esta ronda.',
+    effect: 'Los matches en Personalidad cuentan doble en el track de matchmaking esta ronda.',
     type: 'auto', attr: 'Personalidad', multiplier: 2,
   },
   {
     id: 3, name: 'Estilo de vida doble', emoji: '🌿',
-    effect: 'Los matches en Estilo de vida valen el doble esta ronda.',
+    effect: 'Los matches en Estilo de vida cuentan doble en el track de matchmaking esta ronda.',
     type: 'auto', attr: 'Estilo de vida', multiplier: 2,
   },
   {
     id: 4, name: 'Valores doble', emoji: '💡',
-    effect: 'Los matches en Valores valen el doble esta ronda.',
+    effect: 'Los matches en Valores cuentan doble en el track de matchmaking esta ronda.',
     type: 'auto', attr: 'Valores', multiplier: 2,
   },
   {
     id: 5, name: 'Intereses doble', emoji: '🎵',
-    effect: 'Los matches en Intereses valen el doble esta ronda.',
+    effect: 'Los matches en Intereses cuentan doble en el track de matchmaking esta ronda.',
     type: 'auto', attr: 'Intereses', multiplier: 2,
   },
   {

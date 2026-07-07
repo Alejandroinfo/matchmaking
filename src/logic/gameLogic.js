@@ -56,16 +56,18 @@ export function computeCompatibility(personality, postor) {
   const priorityPoints = getPriorityPoints(personality.length)
   let ownPoints = 0
   let matches = 0
+  const matchedAttrs = {}
   personality.forEach((card, i) => {
     const postorVal = postor[card.attribute]
     if (postorVal === card.value) {
       ownPoints += priorityPoints[i]
       matches++
+      matchedAttrs[card.attribute] = true
     } else if (postorVal === ANTAGONISTS[card.value]) {
       ownPoints -= priorityPoints[i]
     }
   })
-  return { ownPoints, matches }
+  return { ownPoints, matches, matchedAttrs }
 }
 
 // Personality is already in fixed attribute order.

@@ -1,52 +1,65 @@
-# Matchmaker 💘
+# Blindspot 💘
 
-Juego de deducción social multijugador en tiempo real. Descubre quién eres a través del amor — o al menos inténtalo mientras tus amigos te ayudan (o sabotean).
+Juego de deducción social de 3 a 6 jugadores. Descubre tus propias preferencias románticas a través de las citas que aceptas, lo que ves en los demás, y tu instinto acumulado. Al final, describe a tu pareja ideal y demuestra cuánto te conoces.
 
 ---
 
 ## Concepto
 
-Cada jugador tiene una **personalidad oculta** que define qué busca en una pareja. Puedes ver la personalidad de todos los demás, pero nunca la tuya propia. A lo largo de las rondas vas deduciendo quién eres según las citas que aceptas y los resultados que obtienes. Al final, describes a tu pareja ideal para demostrar cuánto te conoces.
+Cada jugador tiene una **personalidad oculta** — una carta de postor que define qué busca en pareja. Puedes ver la personalidad de todos los demás, pero nunca la tuya propia. A lo largo de las rondas recibes recomendaciones, aceptas o rechazas citas, y acumulas pistas sobre ti mismo. El juego termina con una prueba final de autoconocimiento: el soulmate.
 
 ---
 
 ## Flujo de una partida
 
 ### Setup
-- Cada jugador recibe N cartas de atributos ocultas que forman su personalidad
-- El orden aleatorio determina la **prioridad** de cada atributo (cuánto pesa en el soulmate)
+- Cada jugador recibe 1 carta de postor como su **personalidad oculta** (no la ve, los demás sí)
+- La prioridad es siempre fija: **Pasatiempo 3pts → Personalidad 2pts → Estilo de vida 2pts → Valores 1pt → Intereses 1pt**
 - Cada jugador recibe una mano de **6 cartas** de postores
-- Cada jugador comienza con **0 tokens** (gana 3 al inicio de cada ronda)
+- Cada jugador empieza con **0 tokens** (recibe 3 al inicio de cada ronda)
 
 ---
 
 ### Cada ronda
 
-#### 1. Recomendación
-Ves la personalidad de todos los demás (no la tuya). Asignas una carta de tu mano a cada otro jugador como recomendación. Te quedan entre 1 y 4 cartas según el número de jugadores.
+**0. Evento** *(opcional, si está activado)*
+Se revela un evento aleatorio que modifica las reglas de esa ronda.
 
-#### 2. Pitch 🗣️
-Timer configurable (60/90/120s) donde todos hablan libremente. Defiende tus recomendaciones, convence a los demás de aceptarlas. El host puede saltar el timer.
+**1. Recomendación**
+Ves la personalidad de todos los demás (no la tuya). Asignas postors de tu mano a cada otro jugador como recomendación.
+- Con **6 mano**, das 1 a cada jugador y guardas el resto
+- **Regla especial 3 jugadores:** das 2 postors a cada otro jugador
 
-#### 3. Swipe
-Ves las recomendaciones que recibiste y tus cartas sobrantes. Para cada recomendación decides:
-- **💚 Aceptar** → gastas 1 token, el recomendador gana 1 token
+**2. Pitch** *(configurable 60/90/120s)*
+Tiempo libre para convencer a los demás de aceptar tus recomendaciones.
+
+**3. Swipe**
+Ves las recomendaciones recibidas y tus cartas sobrantes. Por cada recomendación decides:
+- **💚 Aceptar** → gastas 1 token, el recomendador gana 1 token de los tuyos
 - **❌ Rechazar** → sin coste
 
 Con tus cartas sobrantes puedes hacer una **cita propia** (🎲):
 - Gastas 1 token → va a la caja (nadie lo gana)
-- Útil si no confías en las recomendaciones o prefieres no dar puntos a nadie
+- Útil si no confías en las recomendaciones o prefieres no dar tokens a nadie
 
-#### 4. Reveal
-Se muestran los resultados: citas aceptadas, tokens ganados/perdidos, y el estado del **track de matchmaking**.
+**4. Apuesta** *(opcional, si está activada)*
+Antes del reveal, declaras cuántos matches crees que tuviste en total. Si aciertas: recuperas 1 token propio.
+
+**5. Reveal**
+Se muestran resultados: citas aceptadas, tokens, track de matchmaking.
 
 ---
 
 ### Ronda final — Soulmate 💞
+Sin recomendaciones. Describes tu pareja ideal eligiendo un valor por atributo. Es tu mejor hipótesis sobre tu personalidad. Los puntos valen **el doble (×2)**.
 
-Sin recomendaciones. Describes tu pareja ideal eligiendo un valor por atributo. Es tu mejor hipótesis sobre tu propia personalidad.
-
-Los puntos valen **el doble** (×2) comparado con una cita normal. Quien acierte más atributos gana más; quien ponga el antagónico de su valor real pierde puntos.
+| Posición | Match | Antagónico |
+|---|---|---|
+| 1 — Pasatiempo | +6 pts | −6 pts |
+| 2 — Personalidad | +4 pts | −4 pts |
+| 3 — Estilo de vida | +4 pts | −4 pts |
+| 4 — Valores | +2 pts | −2 pts |
+| 5 — Intereses | +2 pts | −2 pts |
 
 ---
 
@@ -56,52 +69,68 @@ Los puntos valen **el doble** (×2) comparado con una cita normal. Quien acierte
 | Acción | Efecto |
 |---|---|
 | Inicio de cada ronda | +3 tokens |
-| Aceptar recomendación de otro | −1 token (va al recomendador) |
-| Cita propia (sobrante de mano) | −1 token (va a la caja) |
-| Alguien acepta tu recomendación | +1 token |
+| Aceptar recomendación | −1 token tuyo → +1 al recomendador |
+| Cita propia | −1 token → va a la caja |
+| Apuesta correcta | +1 token recuperado |
 
-Tokens no gastados al final = **1 punto cada uno**.
-
-### Compatibilidad en el soulmate (×2)
-| Posición (prioridad) | Match | Antagónico |
-|---|---|---|
-| 1 (más importante) | +6 pts | −6 pts |
-| 2 | +4 pts | −4 pts |
-| 3 | +4 pts | −4 pts |
-| 4 | +2 pts | −2 pts |
-| 5 (solo con 5 atributos) | +2 pts | −2 pts |
+Tokens restantes al final = **1 punto cada uno**.
 
 ### Track de matchmaking 🏹
-Por cada cita aceptada de tu recomendación, el número de matches de esa cita se suma a tu track acumulado. Al final del juego, el jugador con más puntos en el track gana **+3 puntos bonus**. En caso de empate, todos los empatados reciben el bonus.
+Por cada cita aceptada de tu recomendación, sus matches se suman a tu track. Al final, el líder del track gana **+3 puntos bonus**.
 
 ### Puntuación final
 ```
-Score = tokens restantes + soulmate (×2) + bonus matchmaking (+3 si líder del track)
+Score = tokens restantes + soulmate ×2 + bonus track (+3 si líder)
 ```
 
 ---
 
 ## Atributos y antagónicos
 
-| Atributo | Pares antagónicos (6 opciones) |
-|---|---|
-| 🎨 Pasatiempo | Senderismo ↔ Videojuegos · Cocina ↔ Comida a domicilio · Lectura ↔ Series |
-| ✨ Personalidad | Extrovertido ↔ Introvertido · Aventurero ↔ Cauteloso · Organizado ↔ Espontáneo |
-| 🌿 Estilo de vida | Madrugador ↔ Noctámbulo · Deportista ↔ Sedentario · Viajero ↔ Hogareño |
-| 💡 Valores | Ambicioso ↔ Conformista · Familiar ↔ Independiente · Generoso ↔ Ahorrativo |
-| 🎵 Intereses | Arte ↔ Ciencia · Naturaleza ↔ Ciudad · Música ↔ Silencio *(solo con 5 atributos)* |
+| Posición | Atributo | Pares antagónicos |
+|---|---|---|
+| 1 · 3pts | 🎨 Pasatiempo | Senderismo ↔ Videojuegos · Cocina ↔ Comida a domicilio · Lectura ↔ Series |
+| 2 · 2pts | ✨ Personalidad | Extrovertido ↔ Introvertido · Aventurero ↔ Cauteloso · Organizado ↔ Espontáneo |
+| 3 · 2pts | 🌿 Estilo de vida | Madrugador ↔ Noctámbulo · Deportista ↔ Sedentario · Viajero ↔ Hogareño |
+| 4 · 1pt | 💡 Valores | Ambicioso ↔ Conformista · Familiar ↔ Independiente · Generoso ↔ Ahorrativo |
+| 5 · 1pt | 🎵 Intereses | Arte ↔ Ciencia · Naturaleza ↔ Ciudad · Música ↔ Silencio *(con 5 atributos)* |
 
 Con **4 opciones** se usan solo los primeros 2 pares de cada atributo.
 
 ---
 
-## Distribución de roles por número de jugadores
+## Probabilidad de matches
 
-No hay roles de amigo/envidioso. La economía de tokens crea la tensión natural: todos quieren que sus recomendaciones sean aceptadas (ganan tokens), y todos tienen que decidir cuánto gastar en citas (pierden tokens).
+Con 5 atributos y 4 opciones (versión física):
+
+| Matches | Probabilidad |
+|---|---|
+| 0 | 23.7% |
+| 1 | 39.6% |
+| 2 | 26.4% |
+| 3 | 8.8% |
+| 4 | 1.5% |
+| 5 | 0.1% |
 
 ---
 
-## Configuración (setup)
+## Componentes (versión física)
+
+| Componente | Cantidad | Especificación |
+|---|---|---|
+| Cartas de postor | 250 | 63×88mm. Nombre + 5 atributos (4 opciones c/u) + avatar |
+| Parantes de jugador | 6 | Cartulina A5 doblada. Oculta la personalidad al propio jugador |
+| Hojas de referencia | 6 | Cuarto de hoja. Fases + tabla de ayuda |
+| Tokens | 54 | Disco por color (6 colores × 9) |
+| Cubos de matchmaking | 6 | Cubo del color del jugador, se mueven en el tablero |
+| Tablero central | 1 | A4/A3. Track 1-25 + marcador de ronda + marcador de fase + mazo + descarte |
+| Cartas de evento | 30 | Tamaño mini. Evento + efecto |
+| Manual de reglas | 1 | A5, con ejemplos |
+| Caja | 1 | Con separadores |
+
+---
+
+## Configuración (setup digital)
 
 | Parámetro | Opciones | Default |
 |---|---|---|
@@ -109,73 +138,48 @@ No hay roles de amigo/envidioso. La economía de tokens crea la tensión natural
 | Atributos | 4 / 5 | 4 |
 | Opciones por atributo | 4 / 6 | 6 |
 | Tiempo de pitch | 60s / 90s / 120s | 60s |
+| Eventos | Activados / Desactivados | Desactivados |
+| Apuesta | Activada / Desactivada | Activada |
+
+---
+
+## Regla especial — 3 jugadores
+Cada jugador recomienda **2 postors** a cada otro jugador (en vez de 1). Recibes 4 recomendaciones en el swipe. La mano de 6 cartas se mantiene.
+
+---
+
+## Eventos (módulo opcional)
+
+30 eventos disponibles que se sortean al inicio de cada ronda si el módulo está activado. Ejemplos:
+
+- 🎨 **Pasatiempo doble** — matches en Pasatiempo valen el doble
+- 🤫 **Ronda silenciosa** — sin pitch, swipe inmediato
+- 🎭 **Recomendaciones anónimas** — no sabes quién te recomendó qué
+- 🎀 **Cita gratis** — todas las citas son gratuitas
+- 🎴 **Manos sobrantes** — cartas no usadas pasan a la siguiente ronda
 
 ---
 
 ## Setup técnico
 
-### 1. Firebase
+### Firebase
 1. [console.firebase.google.com](https://console.firebase.google.com) → nuevo proyecto
-2. Agrega una app web → copia credenciales
-3. Firestore Database → crear → pega `firestore.rules`
+2. App web → copiar credenciales
+3. Firestore → crear → pegar `firestore.rules`
 
-### 2. Variables de entorno
+### Local
 ```bash
-cp .env.example .env.local
-# Llena con tus credenciales de Firebase
-```
-
-### 3. Local
-```bash
+cp .env.example .env.local   # añadir credenciales Firebase
 npm install
-npm run dev   # → localhost:5173
+npm run dev                   # → localhost:5173
 ```
 
-### 4. Deploy en Vercel
-1. Sube a GitHub (sin `node_modules`, sin `.env.local`)
-2. [vercel.com](https://vercel.com) → Import → selecciona repo
-3. Agrega las 6 variables de `.env.local` en Environment Variables
-4. Deploy → URL lista para compartir
+### Vercel
+1. Subir a GitHub (sin `node_modules`, sin `.env.local`)
+2. [vercel.com](https://vercel.com) → Import → añadir variables de entorno
+3. Deploy
 
 ---
 
-## Estructura del proyecto
-
-```
-src/
-├── data/
-│   └── gameData.js              # Atributos, antagónicos, generador de postores
-├── logic/
-│   └── gameLogic.js             # Personalidades, manos, compatibilidad
-├── services/
-│   └── gameService.js           # Operaciones Firebase
-├── hooks/
-│   └── useGame.js               # Estado en tiempo real
-├── components/
-│   ├── PersonalityPanel.jsx     # Muestra atributos con pesos
-│   ├── PostorCard.jsx           # Carta estilo Tinder con avatar DiceBear
-│   ├── AntagonistTable.jsx      # Tabla de opuestos
-│   ├── MatchHistory.jsx         # Historial de citas aceptadas
-│   └── PersonalNotes.jsx        # Notas privadas persistentes
-└── screens/
-    ├── HomeScreen.jsx            # Crear sala
-    ├── JoinScreen.jsx            # Unirse via link
-    ├── LobbyScreen.jsx           # Sala de espera + config
-    ├── GameRoom.jsx              # Contenedor principal de fases
-    ├── RecommendationScreen.jsx  # Asignar cartas a otros
-    ├── PitchScreen.jsx           # Timer de convencimiento
-    ├── SwipeScreen.jsx           # Aceptar/rechazar citas
-    ├── RevealScreen.jsx          # Resultados + track matchmaking
-    ├── SoulmateScreen.jsx        # Describir tu pareja ideal
-    └── EndScreen.jsx             # Puntuación final + breakdown
-```
-
----
-
-## Stack técnico
-- **Frontend:** React 18 + Vite
-- **Base de datos:** Firebase Firestore (tiempo real)
-- **Estilos:** Tailwind CSS
-- **Avatares:** DiceBear (SVG, sin librería adicional)
-- **Routing:** React Router v6
-- **Deploy:** Vercel + Firebase
+## Stack
+React 18 · Vite · Firebase Firestore · Tailwind CSS · React Router v6 · DiceBear avatars · Vercel

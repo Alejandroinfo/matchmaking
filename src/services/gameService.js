@@ -24,7 +24,7 @@ export async function createRoom(playerName) {
   await setDoc(doc(db, 'games', roomCode), {
     hostId: playerId,
     status: 'lobby',
-    settings: { totalRounds: 3, numOptions: 6, numAttributes: 4, pitchTime: 60, enableBetting: true, enableEvents: false },
+    settings: { totalRounds: 3, numOptions: 6, numAttributes: 4, pitchTime: 60, enableBetting: true, enableEvents: true },
     round: 0,
     phase: null,
     players: { [playerId]: { name: playerName, tokens: 0, score: 0, joinOrder: 0 } },
@@ -265,13 +265,19 @@ export async function submitSwipes(roomCode, playerId, swipeDecisions, selfDateP
       recommendations: data.recommendations ?? {},
     }]
 
-    // Compute matchmaking track: per accepted recommended date, add its matches to recommender's track
+    // Compute matchmaking track: per accepted recommended date, add matches to recommender's track
+    // Attribute-doubling events apply HERE (track only, not to reveal score)
     const trackGains = {}
     playerIds.forEach(pid => { trackGains[pid] = 0 })
     playerIds.forEach(pid => {
       roundResults[pid].acceptedDates
         .filter(d => d.fromId)
-        .forEach(d => { trackGains[d.fromId] = (trackGains[d.fromId] ?? 0) + d.matches })
+        .forEach(d => {
+          let count = d.matches
+          // If event doubles a specific attribute and it matched, count it twice
+          if (event?.attr && d.matchedAttrs?.[event.attr]) count += 1
+          trackGains[d.fromId] = (trackGains[d.fromId] ?? 0) + count
+        })
     })
 
     const updatedTrack = { ...(data.matchmakingTrack ?? {}) }
