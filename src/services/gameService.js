@@ -87,8 +87,8 @@ export async function startGame(roomCode) {
   const snap = await getDoc(ref)
   const data = snap.data()
   const playerIds = Object.keys(data.players)
-  if (playerIds.length < 2) throw new Error('Necesitas al menos 2 jugadores')
   resetUsedNames()
+  if (playerIds.length < 2) throw new Error('Necesitas al menos 2 jugadores')
 
   const { numOptions = 6, numAttributes = 4 } = data.settings
   const personalities = dealPersonalities(playerIds, numOptions, numAttributes)
@@ -100,7 +100,9 @@ export async function startGame(roomCode) {
   const tokenAmount = activeEvent?.tokensThisRound ?? TOKENS_PER_ROUND
   let updatedPlayers = addRoundTokens(data.players, playerIds, tokenAmount)
   updatedPlayers = applyEventRoundStart(updatedPlayers, playerIds, activeEvent)
-  playerIds.forEach(pid => { updatedPlayers[pid].score = 0 })
+  playerIds.forEach(pid => {
+    updatedPlayers[pid] = { ...updatedPlayers[pid], score: 0, datePoints: 0 }
+  })
 
   await updateDoc(ref, {
     status: 'playing',

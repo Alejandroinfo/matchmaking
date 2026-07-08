@@ -28,7 +28,7 @@ export default function RevealScreen({ roomCode, game, playerId, isHost, sortedP
       {/* Matchmaking track */}
       <div className="card">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-          🏹 Track de matchmaking <span className="text-gray-400 font-normal">(líder gana +3 pts al final)</span>
+          🏹 Track de matchmaking <span className="text-gray-400 font-normal">(líder al final gana +3 pts)</span>
         </p>
         <div className="space-y-2">
           {[...sortedPlayers]
@@ -38,16 +38,19 @@ export default function RevealScreen({ roomCode, game, playerId, isHost, sortedP
               const gain = trackGains[p.id] ?? 0
               const pct = maxTrack > 0 ? (total / maxTrack) * 100 : 0
               const isMe = p.id === playerId
+              const isLeader = total === maxTrack && maxTrack > 0
               return (
                 <div key={p.id} className={`space-y-1 ${isMe ? 'font-semibold' : ''}`}>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-700">{p.name.split(' ')[0]} {isMe && '(tú)'}</span>
+                    <span className="text-gray-700">
+                      {isLeader && '👑 '}{p.name.split(' ')[0]} {isMe && '(tú)'}
+                    </span>
                     <span className="text-gray-500">
-                      {total} pts {gain > 0 && <span className="text-emerald-600">+{gain} esta ronda</span>}
+                      {total} matches {gain > 0 && <span className="text-emerald-600">+{gain} esta ronda</span>}
                     </span>
                   </div>
                   <div className="w-full bg-gray-100 rounded-full h-2">
-                    <div className={`h-2 rounded-full transition-all ${total === maxTrack && maxTrack > 0 ? 'bg-rose-500' : 'bg-rose-200'}`}
+                    <div className={`h-2 rounded-full transition-all ${isLeader ? 'bg-rose-500' : 'bg-rose-200'}`}
                       style={{ width: `${pct}%` }} />
                   </div>
                 </div>
@@ -90,29 +93,35 @@ export default function RevealScreen({ roomCode, game, playerId, isHost, sortedP
             <span className="text-xs text-emerald-700 flex-1">+3 tokens de la ronda</span>
             <span className="text-xs font-bold text-emerald-700">+3 🪙</span>
           </div>
-          <div className="space-y-1.5">
-            {(myResult.acceptedDates ?? []).map((d, i) => {
-              const fromName = d.fromId ? sortedPlayers.find(p => p.id === d.fromId)?.name.split(' ')[0] : null
-              return (
-                <div key={i} className="flex items-center gap-2 bg-white rounded-xl px-3 py-2">
-                  <span className="text-sm">💚</span>
-                  <span className="text-sm text-gray-700 flex-1 truncate">{d.postor?.name}</span>
-                  <span className="text-xs text-gray-500">{d.matches} ✨</span>
-                  <span className="text-xs text-gray-400 italic">pts ocultos</span>
-                  <span className="text-xs text-rose-500 font-medium">-1 🪙</span>
-                  {fromName && <span className="text-xs text-amber-600">→ {fromName} +1</span>}
-                  {!fromName && <span className="text-xs text-gray-400">→ caja</span>}
-                </div>
-              )
-            })}
-            {myResult.acceptedDates?.length === 0 && (
+          {/* Own dates — totals only, pts locked */}
+          {(() => {
+            const dates = myResult.acceptedDates ?? []
+            const totalMatches = dates.reduce((s, d) => s + (d.matches ?? 0), 0)
+            const numDates = dates.length
+            if (numDates === 0) return (
               <p className="text-sm text-gray-400 italic text-center py-2">No saliste con nadie esta ronda</p>
-            )}
-          </div>
-          <div className="mt-3">
+            )
+            return (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between bg-white rounded-xl px-3 py-2.5">
+                  <span className="text-sm text-gray-600">{numDates} cita{numDates > 1 ? 's' : ''} esta ronda</span>
+                  <span className="text-sm font-bold text-gray-700">{totalMatches} ✨ total</span>
+                </div>
+                <div className="flex items-center justify-between bg-rose-50 rounded-xl px-3 py-2.5 border border-rose-100">
+                  <span className="text-sm text-gray-500">🔒 Compatibilidad total</span>
+                  <span className="text-xs text-gray-400">se revela al final</span>
+                </div>
+              </div>
+            )
+          })()}
+          <div className="mt-3 space-y-1.5">
             <div className="flex items-center justify-between bg-white rounded-xl px-3 py-2">
               <span className="text-sm text-gray-600">Tokens restantes</span>
               <span className="font-bold text-gray-800">{sortedPlayers.find(p => p.id === playerId)?.tokens ?? 0} 🪙</span>
+            </div>
+            <div className="flex items-center justify-between bg-rose-50 rounded-xl px-3 py-2 border border-rose-100">
+              <span className="text-sm text-gray-500">🔒 Pts de citas acumulados</span>
+              <span className="text-xs text-gray-400">se revelan al final</span>
             </div>
           </div>
         </div>
@@ -143,21 +152,28 @@ export default function RevealScreen({ roomCode, game, playerId, isHost, sortedP
                 </div>
               </div>
 
-              <div className="space-y-1">
-                {(r?.acceptedDates ?? []).map((d, i) => (
-                  <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-1.5">
-                    <span className="text-xs">💚</span>
-                    <span className="text-xs text-gray-700 flex-1 truncate">{d.postor?.name}</span>
-                    <span className="text-xs text-gray-500">{d.matches} ✨</span>
-                    <span className={`text-xs font-bold ${(d.ownPoints ?? 0) >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
-                      {(d.ownPoints ?? 0) >= 0 ? '+' : ''}{d.ownPoints ?? 0} pts
-                    </span>
+              {/* Totals only — not per-date */}
+              {(() => {
+                const dates = r?.acceptedDates ?? []
+                const totalMatches = dates.reduce((s, d) => s + (d.matches ?? 0), 0)
+                const totalPoints = dates.reduce((s, d) => s + (d.ownPoints ?? 0), 0)
+                const numDates = dates.length
+                if (numDates === 0) return <p className="text-xs text-gray-400 italic">Sin citas</p>
+                return (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2">
+                      <span className="text-xs text-gray-600">{numDates} cita{numDates > 1 ? 's' : ''}</span>
+                      <span className="text-xs font-bold text-gray-700">{totalMatches} ✨ total</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2">
+                      <span className="text-xs text-gray-600">Compatibilidad total</span>
+                      <span className={`text-xs font-bold ${totalPoints >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
+                        {totalPoints >= 0 ? '+' : ''}{totalPoints} pts
+                      </span>
+                    </div>
                   </div>
-                ))}
-                {r?.acceptedDates?.length === 0 && (
-                  <p className="text-xs text-gray-400 italic">Sin citas</p>
-                )}
-              </div>
+                )
+              })()}
 
               {myRecForP && (
                 <div className={`mt-2 text-xs px-3 py-1.5 rounded-lg font-medium ${

@@ -48,10 +48,15 @@ export default function EndScreen({ game, playerId, sortedPlayers, myPersonality
                 <span className="font-medium text-gray-700 flex-1">{p.name} {p.id === playerId && <span className="text-xs text-rose-400">(tú)</span>}</span>
                 <span className="font-bold text-gray-800">{Math.round((p.score ?? 0) * 10) / 10} pts</span>
               </div>
-              <div className="flex gap-3 mt-1 ml-11 text-xs text-gray-500">
+              <div className="flex gap-3 mt-1 ml-11 text-xs text-gray-500 flex-wrap">
                 <span>🪙 {finalTokens} tokens</span>
                 <span>+ 💞 {soulmatePoints > 0 ? '+' : ''}{soulmatePoints} soulmate</span>
-                {matchmakingWinners.includes(p.id) && <span className="text-rose-500">+ 🏹 +3 matchmaking</span>}
+                {(p.datePoints ?? 0) !== 0 && (
+                  <span className={(p.datePoints ?? 0) >= 0 ? 'text-emerald-600' : 'text-rose-500'}>
+                    + 📅 {(p.datePoints ?? 0) > 0 ? '+' : ''}{p.datePoints} citas
+                  </span>
+                )}
+                {matchmakingWinners.includes(p.id) && <span className="text-rose-500">+ 🏹 +3 (líder track)</span>}
               </div>
             </div>
           )
@@ -92,8 +97,20 @@ export default function EndScreen({ game, playerId, sortedPlayers, myPersonality
               }`}>
                 <span className="text-gray-600">🏹 Track de matchmaking</span>
                 <span className="font-bold text-gray-800">
-                  {matchmakingTrack[p.id]} pts
-                  {matchmakingWinners.includes(p.id) && <span className="text-amber-600 ml-1">+3 🏆</span>}
+                  {matchmakingTrack[p.id]} matches
+                  {matchmakingWinners.includes(p.id) && <span className="text-amber-600 ml-1">→ +3 pts 🏆</span>}
+                </span>
+              </div>
+            )}
+
+            {/* Date points */}
+            {(p.datePoints ?? 0) !== 0 && (
+              <div className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm ${
+                (p.datePoints ?? 0) >= 0 ? 'bg-emerald-50' : 'bg-rose-50'
+              }`}>
+                <span className="text-gray-600">📅 Puntos de citas</span>
+                <span className={`font-bold ${(p.datePoints ?? 0) >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
+                  {(p.datePoints ?? 0) > 0 ? '+' : ''}{p.datePoints} pts
                 </span>
               </div>
             )}
