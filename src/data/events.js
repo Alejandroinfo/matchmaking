@@ -63,13 +63,13 @@ export const EVENTS = [
     type: 'auto', maxDates: 1,
   },
   {
-    id: 28, name: 'Apuesta doble', emoji: '🎰',
+    id: 28, name: 'Recuperación doble', emoji: '🎰',
     effect: 'Si aciertas la apuesta esta ronda recuperas 2 tokens en vez de 1.',
     type: 'auto', betReward: 2,
   },
   {
-    id: 29, name: 'Más citas, más bonus', emoji: '🏆',
-    effect: 'El jugador con más matches esta ronda recibe +1 token extra.',
+    id: 29, name: 'Mejor chemistry gana', emoji: '🏆',
+    effect: 'El jugador con más matches totales esta ronda recibe +1 token extra.',
     type: 'auto', mostMatchesBonus: true,
   },
   {
@@ -113,12 +113,12 @@ export const EVENTS = [
     type: 'social',
   },
   {
-    id: 57, name: 'Apuesta doble oportunidad', emoji: '🎲',
+    id: 57, name: 'Segunda apuesta', emoji: '🎲',
     effect: 'Puedes hacer una segunda apuesta esta ronda. Si aciertas ambas recuperas 3 tokens.',
     type: 'social',
   },
   {
-    id: 63, name: 'Doble mano', emoji: '✋',
+    id: 63, name: 'Mano ampliada', emoji: '✋',
     effect: 'Esta ronda recibes 3 cartas extra en tu mano.',
     type: 'auto', extraCards: 3,
   },

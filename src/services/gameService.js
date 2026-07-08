@@ -133,11 +133,11 @@ export async function submitRecommendations(roomCode, playerId, recommendations,
   if (allSubmitted) await updateDoc(ref, { phase: 'pitch' })
 }
 
-export async function submitSwipes(roomCode, playerId, swipeDecisions, selfDatePostor = null) {
+export async function submitSwipes(roomCode, playerId, swipeDecisions, selfDatesArr = []) {
   const ref = doc(db, 'games', roomCode)
   await updateDoc(ref, {
     [`swipeDecisions.${playerId}`]: swipeDecisions,
-    [`selfDates.${playerId}`]: selfDatePostor ?? null,
+    [`selfDates.${playerId}`]: Array.isArray(selfDatesArr) ? selfDatesArr : (selfDatesArr ? [selfDatesArr] : []),
   })
 
   const snap = await getDoc(ref)
@@ -173,8 +173,8 @@ export async function submitSwipes(roomCode, playerId, swipeDecisions, selfDateP
         if (postor) {
           const accepted = data.swipeDecisions?.[pid]?.[postor.uid] === true
           if (accepted) {
-            const { ownPoints, matches } = computeCompatibility(data.personalities[pid], postor)
-            acceptedDates.push({ postor, fromId: event?.anonymousRecs ? null : fromId, ownPoints, matches })
+            const { ownPoints, matches, matchedAttrs } = computeCompatibility(data.personalities[pid], postor)
+            acceptedDates.push({ postor, fromId: event?.anonymousRecs ? null : fromId, ownPoints, matches, matchedAttrs })
             datesAccepted++
           }
         }
@@ -184,20 +184,22 @@ export async function submitSwipes(roomCode, playerId, swipeDecisions, selfDateP
           if (postor2) {
             const accepted2 = data.swipeDecisions?.[pid]?.[postor2.uid] === true
             if (accepted2) {
-              const { ownPoints, matches } = computeCompatibility(data.personalities[pid], postor2)
-              acceptedDates.push({ postor: postor2, fromId: event?.anonymousRecs ? null : fromId, ownPoints, matches })
+              const { ownPoints, matches, matchedAttrs } = computeCompatibility(data.personalities[pid], postor2)
+              acceptedDates.push({ postor: postor2, fromId: event?.anonymousRecs ? null : fromId, ownPoints, matches, matchedAttrs })
               datesAccepted++
             }
           }
         }
       })
 
-      // Self-date (disabled by noSelfDates event)
+      // Self-dates — now an array, multiple allowed (disabled by noSelfDates event)
       if (!event?.noSelfDates) {
-        const selfDate = data.selfDates?.[pid]
-        if (selfDate && datesAccepted < maxDates) {
-          const { ownPoints, matches } = computeCompatibility(data.personalities[pid], selfDate)
-          acceptedDates.push({ postor: selfDate, fromId: null, ownPoints, matches })
+        const selfDatesRaw = data.selfDates?.[pid] ?? []
+        const selfDatesArr = Array.isArray(selfDatesRaw) ? selfDatesRaw : (selfDatesRaw ? [selfDatesRaw] : [])
+        for (const selfDate of selfDatesArr) {
+          if (datesAccepted >= maxDates) break
+          const { ownPoints, matches, matchedAttrs } = computeCompatibility(data.personalities[pid], selfDate)
+          acceptedDates.push({ postor: selfDate, fromId: null, ownPoints, matches, matchedAttrs })
           datesAccepted++
         }
       }
@@ -233,12 +235,15 @@ export async function submitSwipes(roomCode, playerId, swipeDecisions, selfDateP
           .forEach(pid => { tokenChanges[pid] += 1 })
     }
 
-    // Apply token changes
+    // Apply token changes + accumulate date points
     const updatedPlayers = { ...data.players }
     playerIds.forEach(pid => {
+      const datePointsThisRound = roundResults[pid].acceptedDates
+        .reduce((s, d) => s + (d.ownPoints ?? 0), 0)
       updatedPlayers[pid] = {
         ...updatedPlayers[pid],
         tokens: Math.max(0, (updatedPlayers[pid].tokens ?? 0) + tokenChanges[pid]),
+        datePoints: (updatedPlayers[pid].datePoints ?? 0) + datePointsThisRound,
       }
     })
 
@@ -252,8 +257,11 @@ export async function submitSwipes(roomCode, playerId, swipeDecisions, selfDateP
             const r2 = data.recommendations2?.[pid]?.[t]
             return [r1?.uid, r2?.uid].filter(Boolean)
           }),
-          data.selfDates?.[pid]?.uid,
-        ].filter(Boolean))
+          ...(Array.isArray(data.selfDates?.[pid])
+            ? data.selfDates[pid].map(p => p?.uid)
+            : [data.selfDates?.[pid]?.uid]
+          ).filter(Boolean),
+        ])
         carryOverHands[pid] = (data.hands?.[pid] ?? []).filter(p => !usedUids.has(p.uid))
       })
     }
@@ -373,9 +381,10 @@ export async function submitSoulmateSelection(roomCode, playerId, description) {
       const tokens = updatedPlayers[pid].tokens ?? 0
       const soulmatePoints = soulmateResults[pid].ownPoints
       const matchmakingBonus = trackWinners.includes(pid) ? 3 : 0
+      const datePoints = updatedPlayers[pid].datePoints ?? 0
       updatedPlayers[pid] = {
         ...updatedPlayers[pid],
-        score: tokens + soulmatePoints + matchmakingBonus,
+        score: tokens + soulmatePoints + matchmakingBonus + datePoints,
         matchmakingBonus,
       }
     })

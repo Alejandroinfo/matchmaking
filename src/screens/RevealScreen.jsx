@@ -98,6 +98,7 @@ export default function RevealScreen({ roomCode, game, playerId, isHost, sortedP
                   <span className="text-sm">💚</span>
                   <span className="text-sm text-gray-700 flex-1 truncate">{d.postor?.name}</span>
                   <span className="text-xs text-gray-500">{d.matches} ✨</span>
+                  <span className="text-xs text-gray-400 italic">pts ocultos</span>
                   <span className="text-xs text-rose-500 font-medium">-1 🪙</span>
                   {fromName && <span className="text-xs text-amber-600">→ {fromName} +1</span>}
                   {!fromName && <span className="text-xs text-gray-400">→ caja</span>}
@@ -108,9 +109,11 @@ export default function RevealScreen({ roomCode, game, playerId, isHost, sortedP
               <p className="text-sm text-gray-400 italic text-center py-2">No saliste con nadie esta ronda</p>
             )}
           </div>
-          <div className="mt-3 flex items-center justify-between bg-white rounded-xl px-3 py-2">
-            <span className="text-sm text-gray-600">Tokens restantes</span>
-            <span className="font-bold text-gray-800">{sortedPlayers.find(p => p.id === playerId)?.tokens ?? 0} 🪙</span>
+          <div className="mt-3">
+            <div className="flex items-center justify-between bg-white rounded-xl px-3 py-2">
+              <span className="text-sm text-gray-600">Tokens restantes</span>
+              <span className="font-bold text-gray-800">{sortedPlayers.find(p => p.id === playerId)?.tokens ?? 0} 🪙</span>
+            </div>
           </div>
         </div>
       )}
@@ -146,6 +149,9 @@ export default function RevealScreen({ roomCode, game, playerId, isHost, sortedP
                     <span className="text-xs">💚</span>
                     <span className="text-xs text-gray-700 flex-1 truncate">{d.postor?.name}</span>
                     <span className="text-xs text-gray-500">{d.matches} ✨</span>
+                    <span className={`text-xs font-bold ${(d.ownPoints ?? 0) >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
+                      {(d.ownPoints ?? 0) >= 0 ? '+' : ''}{d.ownPoints ?? 0} pts
+                    </span>
                   </div>
                 ))}
                 {r?.acceptedDates?.length === 0 && (

@@ -7,12 +7,18 @@ export default function PitchScreen({ roomCode, game, playerId, isHost, otherPla
   const pitchTime = game.settings?.pitchTime ?? 60
   const [timeLeft, setTimeLeft] = useState(pitchTime)
   const [loading, setLoading] = useState(false)
+  const [showRecs, setShowRecs] = useState(false)
 
-  // My recommendations to others
-  const recommendations = game.recommendations ?? {}
-  const myRecs = otherPlayers
-    .map(p => ({ player: p, postor: recommendations[playerId]?.[p.id] }))
-    .filter(r => r.postor)
+  const recommendations  = game.recommendations  ?? {}
+  const recommendations2 = game.recommendations2 ?? {}
+  const myRecs = otherPlayers.flatMap(p => {
+    const r1 = recommendations[playerId]?.[p.id]
+    const r2 = recommendations2[playerId]?.[p.id]
+    const out = []
+    if (r1) out.push({ player: p, postor: r1, label: '' })
+    if (r2) out.push({ player: p, postor: r2, label: ' (2ª)' })
+    return out
+  })
 
   useEffect(() => {
     if (timeLeft <= 0) return
@@ -53,36 +59,40 @@ export default function PitchScreen({ roomCode, game, playerId, isHost, otherPla
         )}
       </div>
 
-      {/* My recommendations — what I can pitch */}
+      {/* Collapsible: my recommendations */}
       <div className="card">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Tus recomendaciones</p>
-        <div className="space-y-3">
-          {myRecs.map(({ player, postor }) => (
-            <div key={player.id} className="bg-rose-50 rounded-xl p-3 border border-rose-100">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-bold text-gray-500">→ Para</span>
-                <div className="w-6 h-6 rounded-full bg-rose-200 flex items-center justify-center text-xs font-bold text-rose-600">
-                  {player.name.charAt(0)}
-                </div>
-                <span className="font-semibold text-gray-800 text-sm">{player.name.split(' ')[0]}</span>
-              </div>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600">
-                  {postor.name.charAt(0)}
-                </div>
-                <span className="font-semibold text-gray-700">{postor.name}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
-                {ALL_ATTRIBUTES.filter(a => postor[a.name]).map(attr => (
-                  <div key={attr.name} className="flex items-center gap-1 text-xs">
-                    <span>{attr.emoji}</span>
-                    <span className="text-gray-600">{postor[attr.name]}</span>
+        <button onClick={() => setShowRecs(v => !v)}
+          className="w-full flex items-center justify-between">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            💌 Mis recomendaciones ({myRecs.length})
+          </p>
+          <span className="text-gray-400 text-sm">{showRecs ? '▲' : '▼'}</span>
+        </button>
+        {showRecs && (
+          <div className="mt-3 space-y-3">
+            {myRecs.map(({ player, postor, label }, i) => (
+              <div key={i} className="bg-rose-50 rounded-xl p-3 border border-rose-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-bold text-gray-500">→</span>
+                  <div className="w-5 h-5 rounded-full bg-rose-200 flex items-center justify-center text-xs font-bold text-rose-600">
+                    {player.name.charAt(0)}
                   </div>
-                ))}
+                  <span className="font-semibold text-gray-800 text-sm">{player.name.split(' ')[0]}{label}</span>
+                  <span className="text-gray-400 mx-1">·</span>
+                  <span className="font-semibold text-gray-700 text-sm">{postor.name}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+                  {ALL_ATTRIBUTES.filter(a => postor[a.name]).map(attr => (
+                    <div key={attr.name} className="flex items-center gap-1 text-xs">
+                      <span>{attr.emoji}</span>
+                      <span className="text-gray-600">{postor[attr.name]}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Players visible */}

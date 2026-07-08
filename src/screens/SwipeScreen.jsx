@@ -5,25 +5,15 @@ import PersonalityPanel from '../components/PersonalityPanel'
 import PostorCard from '../components/PostorCard'
 import PersonalNotes from '../components/PersonalNotes'
 import EventBanner from '../components/EventBanner'
+import MatchHistory from '../components/MatchHistory'
 
 export default function SwipeScreen({ roomCode, game, playerId, otherPlayers, mySwipes, myHand, sortedPlayers }) {
-
-
-
-
-
-
-
-
-
-
-
-
-
-  const recommendations = game.recommendations ?? {}
+  const recommendations  = game.recommendations  ?? {}
   const recommendations2 = game.recommendations2 ?? {}
-  const personalities = game.personalities ?? {}
-  const swipeDecisions = game.swipeDecisions ?? {}
+  const personalities    = game.personalities    ?? {}
+  const swipeDecisions   = game.swipeDecisions   ?? {}
+  const event            = game.activeEvent      ?? null
+  const myTokens         = game.players?.[playerId]?.tokens ?? 0
 
   // All recs for me: primary + secondary (3-player rule)
   const recsForMe = otherPlayers.flatMap(p => {
@@ -35,36 +25,54 @@ export default function SwipeScreen({ roomCode, game, playerId, otherPlayers, my
     return out
   })
 
-  // Remaining hand: cards not used in my recommendations
+  // Remaining hand (not used in my recommendations)
   const myUsedUids = new Set([
     ...otherPlayers.map(p => recommendations[playerId]?.[p.id]?.uid),
     ...otherPlayers.map(p => recommendations2[playerId]?.[p.id]?.uid),
   ].filter(Boolean))
   const remainingHand = (myHand ?? []).filter(p => !myUsedUids.has(p.uid))
 
-  const [swipes, setSwipes] = useState(mySwipes ?? {})
-  const [selfDate, setSelfDate] = useState(null) // postor or null
+  const [swipes, setSwipes]       = useState(mySwipes ?? {})
+  const [selfDates, setSelfDates] = useState([])  // array — multiple self-dates allowed
   const [submitted, setSubmitted] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading]     = useState(false)
+  const [showRecs, setShowRecs]   = useState(false)
+
+  // Token accounting
+  const acceptedRecs    = Object.values(swipes).filter(Boolean).length
+  const selfDateCount   = selfDates.length
+  const acceptedTotal   = acceptedRecs + selfDateCount
+
+  // How many more dates can we afford?
+  const freeSlots       = event?.allDatesFree ? Infinity : event?.firstDateFree ? 1 : 0
+  const paidSlots       = event?.allDatesFree ? Infinity : myTokens
+  const maxAffordable   = Math.min(paidSlots + (event?.firstDateFree ? 1 : 0), event?.maxDates ?? Infinity)
+  const canAcceptMore   = acceptedTotal < maxAffordable
+  const tokensAfter     = event?.allDatesFree ? myTokens : myTokens - Math.max(0, acceptedTotal - (event?.firstDateFree ? 1 : 0))
 
   const allDecided = recsForMe.every(r => swipes[r.postor.uid] != null)
-  const acceptedCount = Object.values(swipes).filter(Boolean).length + (selfDate ? 1 : 0)
 
   function swipe(uid, accept) {
     if (submitted) return
+    if (accept && !canAcceptMore && !swipes[uid]) return  // enforce limit
     setSwipes(prev => ({ ...prev, [uid]: accept }))
   }
 
   function toggleSelfDate(postor) {
     if (submitted) return
-    setSelfDate(prev => prev?.uid === postor.uid ? null : postor)
+    setSelfDates(prev => {
+      const exists = prev.find(p => p.uid === postor.uid)
+      if (exists) return prev.filter(p => p.uid !== postor.uid)
+      if (!canAcceptMore) return prev  // enforce limit
+      return [...prev, postor]
+    })
   }
 
   async function handleSubmit() {
     if (!allDecided || submitted) return
     setLoading(true)
     try {
-      await submitSwipes(roomCode, playerId, swipes, selfDate)
+      await submitSwipes(roomCode, playerId, swipes, selfDates)
       setSubmitted(true)
     } finally {
       setLoading(false)
@@ -99,43 +107,46 @@ export default function SwipeScreen({ roomCode, game, playerId, otherPlayers, my
         })}
       </div>
 
-      {/* Active event */}
       {game.activeEvent && <EventBanner event={game.activeEvent} />}
 
-      {/* Token counter */}
-      {(() => {
-        const myTokens = game.players?.[playerId]?.tokens ?? 0
-        const acceptedCount = recsForMe.filter(r => swipes[r.postor.uid] === true).length
-          + (selfDate ? 1 : 0)
-        const canAfford = myTokens - acceptedCount
-        return (
-          <div className={`card flex items-center gap-3 py-2.5 border-2 ${
-            canAfford <= 0 ? 'border-rose-400 bg-rose-50' :
-            canAfford === 1 ? 'border-amber-300 bg-amber-50' :
-            'border-emerald-200 bg-emerald-50'
-          }`}>
-            <span className="text-xl">🪙</span>
-            <div className="flex-1">
-              <p className="font-bold text-gray-800 text-sm">
-                {myTokens} tokens disponibles
-              </p>
-              <p className="text-xs text-gray-500">
-                {acceptedCount > 0
-                  ? `${acceptedCount} cita${acceptedCount > 1 ? 's' : ''} seleccionada${acceptedCount > 1 ? 's' : ''} · quedan ${canAfford} tokens`
-                  : `Cada cita que aceptes cuesta 1 token`}
-              </p>
+      {/* Token counter — live preview */}
+      <div className={`card border-2 transition-all ${
+        !canAcceptMore && acceptedTotal > 0 ? 'border-rose-400 bg-rose-50' :
+        tokensAfter <= 1 ? 'border-amber-300 bg-amber-50' :
+        'border-emerald-200 bg-emerald-50'
+      }`}>
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">🪙</span>
+          <div className="flex-1">
+            <div className="flex items-baseline gap-2">
+              <span className="font-bold text-gray-800">{myTokens} tokens ahora</span>
+              {acceptedTotal > 0 && !event?.allDatesFree && (
+                <>
+                  <span className="text-gray-400">→</span>
+                  <span className={`font-bold text-lg ${tokensAfter < 0 ? 'text-rose-600' : tokensAfter === 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                    {tokensAfter} después
+                  </span>
+                </>
+              )}
+              {event?.allDatesFree && <span className="text-xs text-emerald-600 font-medium">🎀 Citas gratis esta ronda</span>}
             </div>
-            {canAfford <= 0 && acceptedCount > 0 && (
-              <span className="text-xs text-rose-600 font-bold">Sin tokens</span>
-            )}
-            {canAfford > 0 && (
-              <span className={`text-sm font-bold ${canAfford === 1 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                +{canAfford} más
-              </span>
-            )}
+            <p className="text-xs text-gray-500 mt-0.5">
+              {acceptedTotal > 0
+                ? `${acceptedTotal} cita${acceptedTotal > 1 ? 's' : ''} seleccionada${acceptedTotal > 1 ? 's' : ''}`
+                : 'Cada cita recomendada cuesta 1 token · las propias también'}
+              {!canAcceptMore && !event?.allDatesFree && ' · sin margen para más'}
+            </p>
           </div>
-        )
-      })()}
+          {!canAcceptMore && !event?.allDatesFree && acceptedTotal > 0 && (
+            <span className="text-xs text-rose-600 font-bold bg-rose-100 px-2 py-1 rounded-lg">Límite</span>
+          )}
+          {canAcceptMore && !event?.allDatesFree && (
+            <span className={`text-sm font-bold ${maxAffordable - acceptedTotal === 1 ? 'text-amber-600' : 'text-emerald-600'}`}>
+              +{maxAffordable === Infinity ? '∞' : maxAffordable - acceptedTotal} más
+            </span>
+          )}
+        </div>
+      </div>
 
       <div className="flex flex-col lg:flex-row gap-4">
         {/* LEFT: personalities */}
@@ -155,6 +166,53 @@ export default function SwipeScreen({ roomCode, game, playerId, otherPlayers, my
             </div>
           </div>
           <PersonalNotes roomCode={roomCode} playerId={playerId} />
+
+          {/* Collapsible: my recommendations */}
+          {(() => {
+            const myRecs = otherPlayers.flatMap(p => {
+              const r1 = recommendations[playerId]?.[p.id]
+              const r2 = recommendations2[playerId]?.[p.id]
+              const out = []
+              if (r1) out.push({ player: p, postor: r1, label: '' })
+              if (r2) out.push({ player: p, postor: r2, label: ' (2ª)' })
+              return out
+            })
+            if (!myRecs.length) return null
+            return (
+              <div className="card">
+                <button onClick={() => setShowRecs(v => !v)}
+                  className="w-full flex items-center justify-between">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    💌 Mis recomendaciones
+                  </p>
+                  <span className="text-gray-400 text-sm">{showRecs ? '▲' : '▼'}</span>
+                </button>
+                {showRecs && (
+                  <div className="mt-2 space-y-2">
+                    {myRecs.map(({ player, postor, label }, i) => (
+                      <div key={i} className="bg-rose-50 rounded-xl p-2 border border-rose-100 text-xs">
+                        <p className="font-semibold text-rose-600 mb-1">
+                          → {player.name.split(' ')[0]}{label}: <span className="text-gray-700">{postor.name}</span>
+                        </p>
+                        <div className="grid grid-cols-1 gap-0.5">
+                          {ATTRIBUTES.filter(a => postor[a.name]).map(attr => (
+                            <span key={attr.name} className="text-gray-500">
+                              {attr.emoji} {postor[attr.name]}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
+
+          {/* Match history */}
+          {(game.roundHistory ?? []).length > 0 && (
+            <MatchHistory roundHistory={game.roundHistory} playerId={playerId} players={game.players} />
+          )}
         </div>
 
         {/* RIGHT */}
@@ -163,28 +221,32 @@ export default function SwipeScreen({ roomCode, game, playerId, otherPlayers, my
           {recsForMe.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                Te proponen ({recsForMe.length}) — aceptar da +1 pt a quien propone
+                Te proponen ({recsForMe.length}) — aceptar da +1🪙 a quien propone
               </p>
               <div className="space-y-3">
                 {recsForMe.map(({ player, postor }) => {
                   const decision = swipes[postor.uid]
+                  const isBlocked = !canAcceptMore && decision !== true && !submitted
                   return (
                     <div key={postor.uid} className={`rounded-2xl overflow-hidden border-2 transition-all ${
                       decision === true ? 'border-emerald-400' :
                       decision === false ? 'border-gray-200 opacity-60' :
+                      isBlocked ? 'border-gray-100 opacity-50' :
                       'border-rose-100'
                     }`}>
-                      <PostorCard
-                        postor={postor}
-                        badge={`💌 ${player.name.split(' ')[0]}`}
-                      />
+                      <PostorCard postor={postor} badge={`💌 ${player.name.split(' ')[0]}`} />
                       {!submitted && (
                         <div className="flex gap-2 p-3 bg-white border-t border-rose-50">
-                          <button onClick={() => swipe(postor.uid, true)}
+                          <button
+                            onClick={() => swipe(postor.uid, true)}
+                            disabled={isBlocked}
                             className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${
-                              decision === true ? 'bg-emerald-500 text-white' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                              decision === true ? 'bg-emerald-500 text-white' :
+                              isBlocked ? 'bg-gray-100 text-gray-300 cursor-not-allowed' :
+                              'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
                             }`}>💚 Aceptar</button>
-                          <button onClick={() => swipe(postor.uid, false)}
+                          <button
+                            onClick={() => swipe(postor.uid, false)}
                             className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${
                               decision === false ? 'bg-gray-400 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                             }`}>❌ Rechazar</button>
@@ -202,24 +264,33 @@ export default function SwipeScreen({ roomCode, game, playerId, otherPlayers, my
             </div>
           )}
 
-          {/* Remaining hand — self-date option */}
-          {remainingHand.length > 0 && (
+          {/* Remaining hand — multiple self-dates allowed */}
+          {!event?.noSelfDates && remainingHand.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Tu mano sobrante</p>
-              <p className="text-xs text-gray-400 mb-2">Puedes salir con una tú solo — nadie gana puntos por ello, pero te la juegas</p>
+              <p className="text-xs text-gray-400 mb-2">
+                Puedes salir con uno o más tú solo — cuesta 1🪙 cada uno, nadie gana tokens por ello
+              </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {remainingHand.map(postor => {
-                  const isSelected = selfDate?.uid === postor.uid
+                  const isSelected = selfDates.some(p => p.uid === postor.uid)
+                  const isBlocked = !isSelected && !canAcceptMore && !submitted
                   return (
                     <div key={postor.uid} className={`rounded-2xl overflow-hidden border-2 transition-all ${
-                      isSelected ? 'border-purple-400' : 'border-gray-200'
+                      isSelected ? 'border-purple-400' :
+                      isBlocked ? 'border-gray-100 opacity-50' :
+                      'border-gray-200'
                     }`}>
                       <PostorCard postor={postor} />
                       {!submitted && (
                         <div className="p-3 bg-white border-t border-gray-100">
-                          <button onClick={() => toggleSelfDate(postor)}
+                          <button
+                            onClick={() => toggleSelfDate(postor)}
+                            disabled={isBlocked}
                             className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all ${
-                              isSelected ? 'bg-purple-500 text-white' : 'bg-purple-50 text-purple-600 hover:bg-purple-100'
+                              isSelected ? 'bg-purple-500 text-white' :
+                              isBlocked ? 'bg-gray-100 text-gray-300 cursor-not-allowed' :
+                              'bg-purple-50 text-purple-600 hover:bg-purple-100'
                             }`}>
                             {isSelected ? '🎲 Salgo con este' : '🎲 Salir yo solo'}
                           </button>
@@ -240,13 +311,13 @@ export default function SwipeScreen({ roomCode, game, playerId, otherPlayers, my
           {!submitted ? (
             <button onClick={handleSubmit} disabled={!allDecided || loading} className="btn-primary w-full sticky bottom-4">
               {loading ? '...' : allDecided
-                ? `✓ Confirmar — ${acceptedCount} cita${acceptedCount !== 1 ? 's' : ''}`
-                : `Falta decidir ${recsForMe.length - Object.keys(swipes).length}`}
+                ? `✓ Confirmar — ${acceptedTotal} cita${acceptedTotal !== 1 ? 's' : ''}`
+                : `Falta decidir ${recsForMe.filter(r => swipes[r.postor.uid] == null).length}`}
             </button>
           ) : (
             <div className="card text-center py-4">
               <p className="text-emerald-600 font-semibold">✓ Confirmado</p>
-              <p className="text-sm text-gray-500 mt-1">{acceptedCount} cita{acceptedCount !== 1 ? 's' : ''} esta ronda</p>
+              <p className="text-sm text-gray-500 mt-1">{acceptedTotal} cita{acceptedTotal !== 1 ? 's' : ''} esta ronda</p>
               <div className="flex justify-center gap-1 mt-2">
                 {[0,1,2].map(i => <div key={i} className="w-2 h-2 rounded-full bg-rose-300 animate-bounce" style={{ animationDelay: `${i*0.15}s` }} />)}
               </div>
