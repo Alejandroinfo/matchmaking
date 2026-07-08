@@ -72,18 +72,54 @@ const FIRST_NAMES = [
   'Logan','Peyton','Rowan','Sydney','Tatum','Addison','Bailey','Cameron','Dylan','Emerson',
   'Finley','Gray','Harper','Jesse','Kai','Lane','Mason','Nova','Parker','Remy',
   'Sloane','Toby','Valor','Wren','Yael','Zion','Nico','Luna','Marco','Sofia',
+  'Paola','Adrian','Paula','Bruno','Giancarlo','Alejandro','Yulia','Franklin',
 ]
 const LAST_NAMES = [
   'García','Martínez','López','Sánchez','Rodríguez','González','Fernández','Torres',
   'Ramírez','Flores','Rivera','Morales','Cruz','Reyes','Ortiz','Herrera','Medina',
   'Vargas','Castro','Jiménez','Ruiz','Álvarez','Mendoza','Ramos','Vega',
+  'Armas','Braithwaite','Valdivia','Bejarano',
 ]
+
+// Track used names across a session to avoid repeats
+const _usedNames = new Set()
+
+function uniqueName() {
+  // Try random combinations until we find an unused one
+  const firstPool = [...FIRST_NAMES]
+  const lastPool  = [...LAST_NAMES]
+  // Shuffle both to try random order
+  for (let i = firstPool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [firstPool[i], firstPool[j]] = [firstPool[j], firstPool[i]]
+  }
+  for (let i = lastPool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [lastPool[i], lastPool[j]] = [lastPool[j], lastPool[i]]
+  }
+  for (const first of firstPool) {
+    for (const last of lastPool) {
+      const name = `${first} ${last}`
+      if (!_usedNames.has(name)) {
+        _usedNames.add(name)
+        return name
+      }
+    }
+  }
+  // Pool exhausted — reset and start over
+  _usedNames.clear()
+  const first = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)]
+  const last  = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)]
+  const name  = `${first} ${last}`
+  _usedNames.add(name)
+  return name
+}
+
+export function resetUsedNames() { _usedNames.clear() }
 
 export function generatePostor(numOptions = 6, numAttributes = 4) {
   const uid = Math.random().toString(36).substring(2, 9)
-  const firstName = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)]
-  const lastName = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)]
-  const postor = { uid, name: `${firstName} ${lastName}` }
+  const postor = { uid, name: uniqueName() }
   getAttributes(numAttributes).forEach(attr => {
     const opts = getAttrOptions(attr, numOptions)
     postor[attr.name] = opts[Math.floor(Math.random() * opts.length)]

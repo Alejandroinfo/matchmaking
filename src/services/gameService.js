@@ -2,6 +2,7 @@ import { db } from '../firebase'
 import { doc, setDoc, updateDoc, getDoc, onSnapshot, serverTimestamp } from 'firebase/firestore'
 import { dealPersonalities, dealHands, computeCompatibility, recsPerPlayer } from '../logic/gameLogic'
 import { drawEvent, getEvent } from '../data/events'
+import { resetUsedNames } from '../data/gameData'
 
 const TOKENS_PER_ROUND = 3
 
@@ -87,6 +88,7 @@ export async function startGame(roomCode) {
   const data = snap.data()
   const playerIds = Object.keys(data.players)
   if (playerIds.length < 2) throw new Error('Necesitas al menos 2 jugadores')
+  resetUsedNames()
 
   const { numOptions = 6, numAttributes = 4 } = data.settings
   const personalities = dealPersonalities(playerIds, numOptions, numAttributes)

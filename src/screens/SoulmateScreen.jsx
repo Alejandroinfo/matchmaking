@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { submitSoulmateSelection } from '../services/gameService'
 import { getAttributes, ANTAGONISTS, getAttrOptions, getPriorityPoints } from '../data/gameData'
 import PersonalNotes from '../components/PersonalNotes'
+import MatchHistory from '../components/MatchHistory'
 
 export default function SoulmateScreen({ roomCode, game, playerId, sortedPlayers }) {
   const numOptions = game.settings?.numOptions ?? 6
@@ -60,6 +61,10 @@ export default function SoulmateScreen({ roomCode, game, playerId, sortedPlayers
 
       {/* Personal notes for reference */}
       <PersonalNotes roomCode={roomCode} playerId={playerId} />
+
+      {(game.roundHistory ?? []).length > 0 && (
+        <MatchHistory roundHistory={game.roundHistory} playerId={playerId} players={game.players} />
+      )}
 
       {/* Attribute pickers */}
       <div className="space-y-4">
