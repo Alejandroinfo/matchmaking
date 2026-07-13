@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { startGame, updateSettings } from '../services/gameService'
 
-const ROLE_DIST = { 3:'1 amigo · 1 envidioso', 4:'1 amigo · 1 envidioso · 1 neutral', 5:'2 amigos · 2 envidiosos', 6:'2 amigos · 2 envidiosos · 1 neutral' }
+const LAST_SETTINGS_KEY = 'blindspot_last_settings'
 
 export default function LobbyScreen({ roomCode, game, playerId, isHost, sortedPlayers }) {
   const [loading, setLoading] = useState(false)
@@ -10,6 +10,8 @@ export default function LobbyScreen({ roomCode, game, playerId, isHost, sortedPl
 
   async function handleStart() {
     if (sortedPlayers.length < 2) return setError('Necesitas al menos 2 jugadores')
+    // Save settings for next time
+    localStorage.setItem(LAST_SETTINGS_KEY, JSON.stringify(settings))
     setLoading(true)
     try {
       await startGame(roomCode)
@@ -23,6 +25,17 @@ export default function LobbyScreen({ roomCode, game, playerId, isHost, sortedPl
   async function handleSetting(key, val) {
     await updateSettings(roomCode, { ...settings, [key]: val })
   }
+
+  async function handleLoadLastSettings() {
+    try {
+      const saved = localStorage.getItem(LAST_SETTINGS_KEY)
+      if (!saved) return
+      const last = JSON.parse(saved)
+      await updateSettings(roomCode, { ...settings, ...last })
+    } catch {}
+  }
+
+  const hasLastSettings = !!localStorage.getItem(LAST_SETTINGS_KEY)
 
   const n = sortedPlayers.length
 
@@ -78,7 +91,15 @@ export default function LobbyScreen({ roomCode, game, playerId, isHost, sortedPl
         {/* Settings (host only) */}
         {isHost && (
           <div className="card">
-            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Configuración</h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Configuración</h2>
+              {hasLastSettings && isHost && (
+                <button onClick={handleLoadLastSettings}
+                  className="text-xs text-rose-500 font-semibold bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2 py-1 rounded-lg transition-all">
+                  ⚡ Usar anterior
+                </button>
+              )}
+            </div>
             <div className="space-y-3">
               <div>
                 <label className="text-sm text-gray-600 font-medium">Rondas</label>
@@ -105,6 +126,24 @@ export default function LobbyScreen({ roomCode, game, playerId, isHost, sortedPl
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
                   {settings.enableEvents ? 'Cada ronda se activa un evento aleatorio' : 'Sin eventos — juego base'}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm text-gray-600 font-medium">Modo de reveal de citas</label>
+                <div className="flex gap-2 mt-1">
+                  {[['matches','Mostrar matches'], ['points','Mostrar puntos']].map(([v, label]) => (
+                    <button key={v} onClick={() => handleSetting('revealMode', v)}
+                      className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                        settings.revealMode === v ? 'bg-rose-500 text-white border-rose-500' : 'bg-white text-gray-600 border-rose-100 hover:border-rose-300'
+                      }`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  {settings.revealMode === 'points'
+                    ? 'Revela el total de puntos de citas, sin mostrar matches individuales'
+                    : 'Muestra matches totales, oculta puntos (default)'}
                 </p>
               </div>
               <div>

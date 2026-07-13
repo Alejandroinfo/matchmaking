@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { submitSwipes } from '../services/gameService'
 import { ALL_ATTRIBUTES as ATTRIBUTES } from '../data/gameData'
+import { getMatchInfo } from '../logic/gameLogic'
 import PersonalityPanel from '../components/PersonalityPanel'
 import PostorCard from '../components/PostorCard'
 import PersonalNotes from '../components/PersonalNotes'
@@ -13,7 +14,8 @@ export default function SwipeScreen({ roomCode, game, playerId, otherPlayers, my
   const personalities    = game.personalities    ?? {}
   const swipeDecisions   = game.swipeDecisions   ?? {}
   const event            = game.activeEvent      ?? null
-  const myTokens         = game.players?.[playerId]?.tokens ?? 0
+  const myOwnTokens = game.players?.[playerId]?.ownTokens ?? 0
+  const myEarned    = game.players?.[playerId]?.earnedTokens ?? 0
 
   // All recs for me: primary + secondary (3-player rule)
   const recsForMe = otherPlayers.flatMap(p => {
@@ -45,10 +47,10 @@ export default function SwipeScreen({ roomCode, game, playerId, otherPlayers, my
 
   // How many more dates can we afford?
   const freeSlots       = event?.allDatesFree ? Infinity : event?.firstDateFree ? 1 : 0
-  const paidSlots       = event?.allDatesFree ? Infinity : myTokens
+  const paidSlots       = event?.allDatesFree ? Infinity : myOwnTokens
   const maxAffordable   = Math.min(paidSlots + (event?.firstDateFree ? 1 : 0), event?.maxDates ?? Infinity)
   const canAcceptMore   = acceptedTotal < maxAffordable
-  const tokensAfter     = event?.allDatesFree ? myTokens : myTokens - Math.max(0, acceptedTotal - (event?.firstDateFree ? 1 : 0))
+  const tokensAfter     = event?.allDatesFree ? myOwnTokens : myOwnTokens - Math.max(0, acceptedTotal - (event?.firstDateFree ? 1 : 0))
 
   const allDecided = recsForMe.every(r => swipes[r.postor.uid] != null)
 
@@ -119,7 +121,7 @@ export default function SwipeScreen({ roomCode, game, playerId, otherPlayers, my
           <span className="text-2xl">🪙</span>
           <div className="flex-1">
             <div className="flex items-baseline gap-2">
-              <span className="font-bold text-gray-800">{myTokens} tokens ahora</span>
+              <span className="font-bold text-gray-800">{myOwnTokens} propios · {myEarned} ⭐ ganados</span>
               {acceptedTotal > 0 && !event?.allDatesFree && (
                 <>
                   <span className="text-gray-400">→</span>
@@ -189,20 +191,48 @@ export default function SwipeScreen({ roomCode, game, playerId, otherPlayers, my
                 </button>
                 {showRecs && (
                   <div className="mt-2 space-y-2">
-                    {myRecs.map(({ player, postor, label }, i) => (
-                      <div key={i} className="bg-rose-50 rounded-xl p-2 border border-rose-100 text-xs">
-                        <p className="font-semibold text-rose-600 mb-1">
-                          → {player.name.split(' ')[0]}{label}: <span className="text-gray-700">{postor.name}</span>
-                        </p>
-                        <div className="grid grid-cols-1 gap-0.5">
-                          {ATTRIBUTES.filter(a => postor[a.name]).map(attr => (
-                            <span key={attr.name} className="text-gray-500">
-                              {attr.emoji} {postor[attr.name]}
-                            </span>
-                          ))}
+                    {myRecs.map(({ player, postor, label }, i) => {
+                      const recipPersonality = personalities[player.id] ?? []
+                      const mi = getMatchInfo(recipPersonality, postor)
+                      return (
+                        <div key={i} className="bg-rose-50 rounded-xl p-2 border border-rose-100 text-xs">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="font-semibold text-rose-600">
+                              → {player.name.split(' ')[0]}{label}: <span className="text-gray-700">{postor.name}</span>
+                            </p>
+                            {mi && (
+                              <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${
+                                mi.score > 0 ? 'bg-emerald-100 text-emerald-700' :
+                                mi.score < 0 ? 'bg-rose-100 text-rose-700' :
+                                'bg-gray-100 text-gray-500'
+                              }`}>
+                                {mi.score > 0 ? '+' : ''}{mi.score} pts
+                              </span>
+                            )}
+                          </div>
+                          <div className="space-y-0.5">
+                            {ATTRIBUTES.filter(a => postor[a.name]).map(attr => {
+                              const info = mi?.attrs?.[attr.name]
+                              return (
+                                <div key={attr.name} className={`flex items-center gap-1 rounded px-1 ${
+                                  info?.type === 'match' ? 'bg-emerald-50' :
+                                  info?.type === 'opponent' ? 'bg-rose-50' : ''
+                                }`}>
+                                  <span>{attr.emoji}</span>
+                                  <span className={`flex-1 ${
+                                    info?.type === 'match' ? 'text-emerald-700 font-semibold' :
+                                    info?.type === 'opponent' ? 'text-rose-600 font-semibold' :
+                                    'text-gray-500'
+                                  }`}>{postor[attr.name]}</span>
+                                  {info?.type === 'match' && <span className="text-emerald-600 font-bold">+{info.pts}</span>}
+                                  {info?.type === 'opponent' && <span className="text-rose-500 font-bold">−{info.pts}</span>}
+                                </div>
+                              )
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </div>

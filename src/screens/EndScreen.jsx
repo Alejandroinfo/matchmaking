@@ -49,7 +49,8 @@ export default function EndScreen({ game, playerId, sortedPlayers, myPersonality
                 <span className="font-bold text-gray-800">{Math.round((p.score ?? 0) * 10) / 10} pts</span>
               </div>
               <div className="flex gap-3 mt-1 ml-11 text-xs text-gray-500 flex-wrap">
-                <span>🪙 {finalTokens} tokens</span>
+                <span>🪙 {p.ownTokens ?? 0} propios</span>
+                {(p.earnedTokens ?? 0) > 0 && <span>+ ⭐ {p.earnedTokens} ganados</span>}
                 <span>+ 💞 {soulmatePoints > 0 ? '+' : ''}{soulmatePoints} soulmate</span>
                 {(p.datePoints ?? 0) !== 0 && (
                   <span className={(p.datePoints ?? 0) >= 0 ? 'text-emerald-600' : 'text-rose-500'}>

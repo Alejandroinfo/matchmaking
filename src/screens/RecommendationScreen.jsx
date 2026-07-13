@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { submitRecommendations } from '../services/gameService'
 import { ALL_ATTRIBUTES } from '../data/gameData'
+import { getMatchInfo } from '../logic/gameLogic'
 import PersonalityPanel from '../components/PersonalityPanel'
 import PostorCard from '../components/PostorCard'
 import AntagonistTable from '../components/AntagonistTable'
@@ -239,6 +240,7 @@ export default function RecommendationScreen({
                       postor={postor}
                       selected={isSelected}
                       badge={assignedName}
+                      matchInfo={selectedRecipient ? getMatchInfo(recipientPersonality, postor) : null}
                     />
                   </div>
                 )

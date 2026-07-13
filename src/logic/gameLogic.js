@@ -76,3 +76,25 @@ export function sortedPersonalityDisplay(personality) {
   const priorityPoints = getPriorityPoints(personality.length)
   return personality.map((card, i) => ({ ...card, weight: priorityPoints[i] }))
 }
+
+// Compute match/opponent/neutral info for a postor vs a personality
+export function getMatchInfo(personality, postor) {
+  if (!personality?.length || !postor) return null
+  const pts = getPriorityPoints(personality.length)
+  const attrs = {}
+  let score = 0
+  personality.forEach((card, i) => {
+    const postorVal = postor[card.attribute]
+    if (!postorVal) return
+    if (postorVal === card.value) {
+      attrs[card.attribute] = { type: 'match', pts: pts[i] }
+      score += pts[i]
+    } else if (ANTAGONISTS[card.value] === postorVal) {
+      attrs[card.attribute] = { type: 'opponent', pts: pts[i] }
+      score -= pts[i]
+    } else {
+      attrs[card.attribute] = { type: 'neutral', pts: 0 }
+    }
+  })
+  return { attrs, score }
+}

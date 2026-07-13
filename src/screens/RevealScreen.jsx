@@ -15,6 +15,10 @@ export default function RevealScreen({ roomCode, game, playerId, isHost, sortedP
   const matchmakingTrack = game.matchmakingTrack ?? {}
   const trackGains = game.matchmakingTrackGains ?? {}
   const maxTrack = Math.max(0, ...Object.values(matchmakingTrack))
+  const revealMode = game.settings?.revealMode ?? 'matches'
+  const myPlayer = sortedPlayers.find(p => p.id === playerId)
+  const myOwnTokens    = myPlayer?.ownTokens    ?? 0
+  const myEarnedTokens = myPlayer?.earnedTokens ?? 0
 
   return (
     <div className="min-h-screen p-4 max-w-2xl mx-auto space-y-4">
@@ -68,7 +72,6 @@ export default function RevealScreen({ roomCode, game, playerId, isHost, sortedP
               {(tokenChanges[playerId] ?? 0) >= 0 ? '+' : ''}{tokenChanges[playerId] ?? 0} 🪙
             </div>
           </div>
-          {/* Bet result if applicable */}
           {(() => {
             const decl = game.betDeclarations?.[playerId]
             if (!decl || decl.skipped || decl.declared === null) return null
@@ -116,12 +119,16 @@ export default function RevealScreen({ roomCode, game, playerId, isHost, sortedP
           })()}
           <div className="mt-3 space-y-1.5">
             <div className="flex items-center justify-between bg-white rounded-xl px-3 py-2">
-              <span className="text-sm text-gray-600">Tokens restantes</span>
-              <span className="font-bold text-gray-800">{sortedPlayers.find(p => p.id === playerId)?.tokens ?? 0} 🪙</span>
+              <span className="text-sm text-gray-600">🪙 Mis tokens (gastables)</span>
+              <span className="font-bold text-gray-800">{myOwnTokens}</span>
+            </div>
+            <div className="flex items-center justify-between bg-emerald-50 rounded-xl px-3 py-2 border border-emerald-100">
+              <span className="text-sm text-gray-600">⭐ Tokens ganados (solo pts)</span>
+              <span className="font-bold text-emerald-700">{myEarnedTokens}</span>
             </div>
             <div className="flex items-center justify-between bg-rose-50 rounded-xl px-3 py-2 border border-rose-100">
-              <span className="text-sm text-gray-500">🔒 Pts de citas acumulados</span>
-              <span className="text-xs text-gray-400">se revelan al final</span>
+              <span className="text-sm text-gray-500">🔒 Compatibilidad acumulada</span>
+              <span className="text-xs text-gray-400">se revela al final</span>
             </div>
           </div>
         </div>
@@ -152,7 +159,7 @@ export default function RevealScreen({ roomCode, game, playerId, isHost, sortedP
                 </div>
               </div>
 
-              {/* Totals only — not per-date */}
+              {/* Totals — mode-dependent */}
               {(() => {
                 const dates = r?.acceptedDates ?? []
                 const totalMatches = dates.reduce((s, d) => s + (d.matches ?? 0), 0)
@@ -163,13 +170,19 @@ export default function RevealScreen({ roomCode, game, playerId, isHost, sortedP
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2">
                       <span className="text-xs text-gray-600">{numDates} cita{numDates > 1 ? 's' : ''}</span>
-                      <span className="text-xs font-bold text-gray-700">{totalMatches} ✨ total</span>
+                      {revealMode === 'matches'
+                        ? <span className="text-xs font-bold text-gray-700">{totalMatches} ✨ total</span>
+                        : <span className="text-xs text-gray-400 italic">matches ocultos</span>
+                      }
                     </div>
                     <div className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2">
                       <span className="text-xs text-gray-600">Compatibilidad total</span>
-                      <span className={`text-xs font-bold ${totalPoints >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
-                        {totalPoints >= 0 ? '+' : ''}{totalPoints} pts
-                      </span>
+                      {revealMode === 'points'
+                        ? <span className={`text-xs font-bold ${totalPoints >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
+                            {totalPoints >= 0 ? '+' : ''}{totalPoints} pts
+                          </span>
+                        : <span className="text-xs text-gray-400 italic">oculto</span>
+                      }
                     </div>
                   </div>
                 )

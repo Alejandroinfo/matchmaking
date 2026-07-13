@@ -3,6 +3,7 @@ import { updateDoc, doc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { ATTR_ORDER, ATTR_EMOJI } from '../data/gameData'
 import EventBanner from '../components/EventBanner'
+import MatchHistory from '../components/MatchHistory'
 
 export default function BetScreen({ roomCode, game, playerId, sortedPlayers }) {
   const roundResults = game.roundResults ?? {}
@@ -64,7 +65,7 @@ export default function BetScreen({ roomCode, game, playerId, sortedPlayers }) {
       if (correct) {
         players[pid] = {
           ...players[pid],
-          tokens: (players[pid].tokens ?? 0) + betReward,
+          ownTokens: (players[pid].ownTokens ?? 0) + betReward,
         }
       }
     })
@@ -109,6 +110,11 @@ export default function BetScreen({ roomCode, game, playerId, sortedPlayers }) {
 
       {/* Active event */}
       {game.activeEvent && <EventBanner event={game.activeEvent} />}
+
+      {/* Match history from previous rounds — helpful for estimating */}
+      {(game.roundHistory ?? []).length > 0 && (
+        <MatchHistory roundHistory={game.roundHistory} playerId={playerId} players={game.players} />
+      )}
 
       {!canBet ? (
         <div className="card text-center py-6 text-gray-400">

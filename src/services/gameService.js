@@ -25,7 +25,7 @@ export async function createRoom(playerName) {
   await setDoc(doc(db, 'games', roomCode), {
     hostId: playerId,
     status: 'lobby',
-    settings: { totalRounds: 3, numOptions: 6, numAttributes: 4, pitchTime: 60, enableBetting: true, enableEvents: true },
+    settings: { totalRounds: 3, numOptions: 6, numAttributes: 4, pitchTime: 60, enableBetting: true, enableEvents: true, revealMode: 'matches' },
     round: 0,
     phase: null,
     players: { [playerId]: { name: playerName, tokens: 0, score: 0, joinOrder: 0 } },
@@ -65,7 +65,7 @@ function addRoundTokens(players, playerIds, tokensOverride = null) {
   const updated = { ...players }
   const amount = tokensOverride ?? TOKENS_PER_ROUND
   playerIds.forEach(pid => {
-    updated[pid] = { ...updated[pid], tokens: (updated[pid].tokens ?? 0) + amount }
+    updated[pid] = { ...updated[pid], ownTokens: (updated[pid].ownTokens ?? 0) + amount }
   })
   return updated
 }
@@ -74,9 +74,9 @@ function applyEventRoundStart(players, playerIds, event) {
   if (!event) return players
   let updated = { ...players }
   if (event.lowestTokenBonus) {
-    const minTokens = Math.min(...playerIds.map(pid => updated[pid].tokens ?? 0))
-    playerIds.filter(pid => (updated[pid].tokens ?? 0) === minTokens).forEach(pid => {
-      updated[pid] = { ...updated[pid], tokens: (updated[pid].tokens ?? 0) + event.lowestTokenBonus }
+    const minTokens = Math.min(...playerIds.map(pid => updated[pid].ownTokens ?? 0))
+    playerIds.filter(pid => (updated[pid].ownTokens ?? 0) === minTokens).forEach(pid => {
+      updated[pid] = { ...updated[pid], ownTokens: (updated[pid].ownTokens ?? 0) + event.lowestTokenBonus }
     })
   }
   return updated
@@ -101,7 +101,7 @@ export async function startGame(roomCode) {
   let updatedPlayers = addRoundTokens(data.players, playerIds, tokenAmount)
   updatedPlayers = applyEventRoundStart(updatedPlayers, playerIds, activeEvent)
   playerIds.forEach(pid => {
-    updatedPlayers[pid] = { ...updatedPlayers[pid], score: 0, datePoints: 0 }
+    updatedPlayers[pid] = { ...updatedPlayers[pid], score: 0, datePoints: 0, ownTokens: updatedPlayers[pid].ownTokens ?? 0, earnedTokens: 0 }
   })
 
   await updateDoc(ref, {
@@ -158,8 +158,7 @@ export async function submitSwipes(roomCode, playerId, swipeDecisions, selfDates
 
   if (allDone) {
     const roundResults = {}
-    const tokenChanges = {}
-    playerIds.forEach(pid => { tokenChanges[pid] = 0 })
+    // ownTokenChanges and earnedTokenChanges computed below
 
     const event = data.activeEvent ?? null
 
@@ -211,32 +210,36 @@ export async function submitSwipes(roomCode, playerId, swipeDecisions, selfDates
       roundResults[pid] = { acceptedDates }
     })
 
-    // Token changes with event modifiers
+    // Token changes: ownTokens spent on dates, earnedTokens received from accepted recs
+    const ownTokenChanges = {}
+    const earnedTokenChanges = {}
+    playerIds.forEach(pid => { ownTokenChanges[pid] = 0; earnedTokenChanges[pid] = 0 })
+
     playerIds.forEach(pid => {
       roundResults[pid].acceptedDates.forEach((d, idx) => {
         const isFree = event?.allDatesFree || (event?.firstDateFree && idx === 0)
         if (!isFree) {
-          tokenChanges[pid] -= 1
-          if (d.fromId) tokenChanges[d.fromId] += 1
+          ownTokenChanges[pid] -= 1
+          if (d.fromId) earnedTokenChanges[d.fromId] += 1
         }
       })
     })
 
-    // mostDatesBonus event
+    // mostDatesBonus → earnedTokens
     if (event?.mostDatesBonus) {
       const maxAccepted = Math.max(...playerIds.map(pid => roundResults[pid].acceptedDates.length))
       if (maxAccepted > 0)
         playerIds.filter(pid => roundResults[pid].acceptedDates.length === maxAccepted)
-          .forEach(pid => { tokenChanges[pid] += 1 })
+          .forEach(pid => { earnedTokenChanges[pid] += 1 })
     }
 
-    // mostMatchesBonus event
+    // mostMatchesBonus → earnedTokens
     if (event?.mostMatchesBonus) {
       const total = pid => roundResults[pid].acceptedDates.reduce((s, d) => s + d.matches, 0)
       const maxM = Math.max(...playerIds.map(total))
       if (maxM > 0)
         playerIds.filter(pid => total(pid) === maxM)
-          .forEach(pid => { tokenChanges[pid] += 1 })
+          .forEach(pid => { earnedTokenChanges[pid] += 1 })
     }
 
     // Apply token changes + accumulate date points
@@ -246,9 +249,16 @@ export async function submitSwipes(roomCode, playerId, swipeDecisions, selfDates
         .reduce((s, d) => s + (d.ownPoints ?? 0), 0)
       updatedPlayers[pid] = {
         ...updatedPlayers[pid],
-        tokens: Math.max(0, (updatedPlayers[pid].tokens ?? 0) + tokenChanges[pid]),
+        ownTokens: Math.max(0, (updatedPlayers[pid].ownTokens ?? 0) + ownTokenChanges[pid]),
+        earnedTokens: (updatedPlayers[pid].earnedTokens ?? 0) + earnedTokenChanges[pid],
         datePoints: (updatedPlayers[pid].datePoints ?? 0) + datePointsThisRound,
       }
+    })
+
+    // Also store tokenChanges for roundHistory display (combined)
+    const tokenChanges = {}
+    playerIds.forEach(pid => {
+      tokenChanges[pid] = ownTokenChanges[pid] + earnedTokenChanges[pid]
     })
 
     // Compute carry-over hands if manos sobrantes event
@@ -382,13 +392,14 @@ export async function submitSoulmateSelection(roomCode, playerId, description) {
     // Final score = remaining tokens + soulmate points + matchmaking bonus
     const updatedPlayers = { ...data.players }
     playerIds.forEach(pid => {
-      const tokens = updatedPlayers[pid].tokens ?? 0
+      const ownTokens    = updatedPlayers[pid].ownTokens ?? 0
+      const earnedTokens = updatedPlayers[pid].earnedTokens ?? 0
       const soulmatePoints = soulmateResults[pid].ownPoints
       const matchmakingBonus = trackWinners.includes(pid) ? 3 : 0
       const datePoints = updatedPlayers[pid].datePoints ?? 0
       updatedPlayers[pid] = {
         ...updatedPlayers[pid],
-        score: tokens + soulmatePoints + matchmakingBonus + datePoints,
+        score: ownTokens + earnedTokens + soulmatePoints + matchmakingBonus + datePoints,
         matchmakingBonus,
       }
     })
