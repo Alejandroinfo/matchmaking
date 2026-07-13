@@ -251,9 +251,9 @@ export default function SwipeScreen({ roomCode, game, playerId, otherPlayers, my
           {recsForMe.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                Te proponen ({recsForMe.length}) — aceptar da +1🪙 a quien propone
+                Te proponen ({recsForMe.length}) — aceptar da +1⭐ a quien propone
               </p>
-              <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
                 {recsForMe.map(({ player, postor }) => {
                   const decision = swipes[postor.uid]
                   const isBlocked = !canAcceptMore && decision !== true && !submitted
@@ -301,7 +301,7 @@ export default function SwipeScreen({ roomCode, game, playerId, otherPlayers, my
               <p className="text-xs text-gray-400 mb-2">
                 Puedes salir con uno o más tú solo — cuesta 1🪙 cada uno, nadie gana tokens por ello
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {remainingHand.map(postor => {
                   const isSelected = selfDates.some(p => p.uid === postor.uid)
                   const isBlocked = !isSelected && !canAcceptMore && !submitted

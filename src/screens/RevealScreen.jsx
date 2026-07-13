@@ -63,15 +63,12 @@ export default function RevealScreen({ roomCode, game, playerId, isHost, sortedP
         </div>
       </div>
 
-      {/* My tokens this round */}
+      {/* My round summary — compact, no confusing token deltas */}
       {myResult && (
         <div className="card border-rose-200 bg-rose-50">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tus tokens esta ronda</p>
-            <div className={`text-lg font-bold ${(tokenChanges[playerId] ?? 0) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-              {(tokenChanges[playerId] ?? 0) >= 0 ? '+' : ''}{tokenChanges[playerId] ?? 0} 🪙
-            </div>
-          </div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Tu ronda</p>
+
+          {/* Bet result */}
           {(() => {
             const decl = game.betDeclarations?.[playerId]
             if (!decl || decl.skipped || decl.declared === null) return null
@@ -79,60 +76,92 @@ export default function RevealScreen({ roomCode, game, playerId, isHost, sortedP
             const correct = decl.declared === actualTotal
             return (
               <div className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm mb-2 ${
-                correct ? 'bg-emerald-50 border border-emerald-200' : 'bg-rose-100 border border-rose-200'
+                correct ? 'bg-emerald-50 border border-emerald-200' : 'bg-gray-100'
               }`}>
                 <span>{correct ? '✓' : '✗'}</span>
-                <span className="flex-1">
-                  Declaraste {decl.declared} matches — real: {actualTotal}
-                </span>
-                <span className={`font-bold ${correct ? 'text-emerald-700' : 'text-gray-400'}`}>
-                  {correct ? '+1 🪙 recuperado' : 'Sin recuperar'}
+                <span className="flex-1 text-xs">Apuesta: {decl.declared} — real: {actualTotal}</span>
+                <span className={`font-bold text-xs ${correct ? 'text-emerald-700' : 'text-gray-400'}`}>
+                  {correct ? '+1 🪙' : 'Sin recuperar'}
                 </span>
               </div>
             )
           })()}
-          {/* +3 received this round */}
-          <div className="flex items-center gap-2 bg-emerald-50 rounded-xl px-3 py-2 mb-2">
-            <span className="text-xs text-emerald-700 flex-1">+3 tokens de la ronda</span>
-            <span className="text-xs font-bold text-emerald-700">+3 🪙</span>
-          </div>
-          {/* Own dates — totals only, pts locked */}
+
+          {/* Citas summary */}
           {(() => {
             const dates = myResult.acceptedDates ?? []
             const totalMatches = dates.reduce((s, d) => s + (d.matches ?? 0), 0)
-            const numDates = dates.length
-            if (numDates === 0) return (
-              <p className="text-sm text-gray-400 italic text-center py-2">No saliste con nadie esta ronda</p>
-            )
-            return (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between bg-white rounded-xl px-3 py-2.5">
-                  <span className="text-sm text-gray-600">{numDates} cita{numDates > 1 ? 's' : ''} esta ronda</span>
-                  <span className="text-sm font-bold text-gray-700">{totalMatches} ✨ total</span>
+            return dates.length === 0
+              ? <p className="text-sm text-gray-400 italic text-center py-1">Sin citas esta ronda</p>
+              : (
+                <div className="flex gap-2">
+                  <div className="flex-1 bg-white rounded-xl px-3 py-2 text-center">
+                    <p className="text-xs text-gray-400">Citas</p>
+                    <p className="font-bold text-gray-800">{dates.length}</p>
+                  </div>
+                  <div className="flex-1 bg-white rounded-xl px-3 py-2 text-center">
+                    <p className="text-xs text-gray-400">Matches</p>
+                    <p className="font-bold text-gray-800">{totalMatches} ✨</p>
+                  </div>
+                  <div className="flex-1 bg-rose-100 rounded-xl px-3 py-2 text-center">
+                    <p className="text-xs text-rose-400">Compat.</p>
+                    <p className="font-bold text-rose-400">🔒</p>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between bg-rose-50 rounded-xl px-3 py-2.5 border border-rose-100">
-                  <span className="text-sm text-gray-500">🔒 Compatibilidad total</span>
-                  <span className="text-xs text-gray-400">se revela al final</span>
-                </div>
-              </div>
-            )
+              )
           })()}
-          <div className="mt-3 space-y-1.5">
-            <div className="flex items-center justify-between bg-white rounded-xl px-3 py-2">
-              <span className="text-sm text-gray-600">🪙 Mis tokens (gastables)</span>
-              <span className="font-bold text-gray-800">{myOwnTokens}</span>
+
+          {/* My tokens — clear */}
+          <div className="flex gap-2 mt-2">
+            <div className="flex-1 bg-white rounded-xl px-3 py-2 text-center">
+              <p className="text-xs text-gray-400">🪙 Propios</p>
+              <p className="font-bold text-gray-800">{myOwnTokens}</p>
             </div>
-            <div className="flex items-center justify-between bg-emerald-50 rounded-xl px-3 py-2 border border-emerald-100">
-              <span className="text-sm text-gray-600">⭐ Tokens ganados (solo pts)</span>
-              <span className="font-bold text-emerald-700">{myEarnedTokens}</span>
-            </div>
-            <div className="flex items-center justify-between bg-rose-50 rounded-xl px-3 py-2 border border-rose-100">
-              <span className="text-sm text-gray-500">🔒 Compatibilidad acumulada</span>
-              <span className="text-xs text-gray-400">se revela al final</span>
+            <div className="flex-1 bg-emerald-50 rounded-xl px-3 py-2 text-center border border-emerald-100">
+              <p className="text-xs text-emerald-500">⭐ Ganados</p>
+              <p className="font-bold text-emerald-700">{myEarnedTokens}</p>
             </div>
           </div>
         </div>
       )}
+
+      {/* Score parcial de los demás (no se ve el propio) */}
+      <div className="card">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+          Puntuación parcial de los demás
+          <span className="text-gray-300 font-normal ml-1">(tokens + citas, sin soulmate)</span>
+        </p>
+        <div className="space-y-2">
+          {[...sortedPlayers]
+            .filter(p => p.id !== playerId)
+            .sort((a, b) => {
+              const scoreA = (a.ownTokens ?? 0) + (a.earnedTokens ?? 0) + (a.datePoints ?? 0)
+              const scoreB = (b.ownTokens ?? 0) + (b.earnedTokens ?? 0) + (b.datePoints ?? 0)
+              return scoreB - scoreA
+            })
+            .map((p, i) => {
+              const tokenPts = (p.ownTokens ?? 0) + (p.earnedTokens ?? 0)
+              const datePts  = p.datePoints ?? 0
+              const partial  = tokenPts + datePts
+              return (
+                <div key={p.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-3 py-2">
+                  <span className="text-sm">{['🥇','🥈','🥉'][i] ?? '·'}</span>
+                  <span className="text-sm font-medium text-gray-700 flex-1">{p.name}</span>
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <span>🪙{tokenPts}</span>
+                    {datePts !== 0 && (
+                      <span className={datePts > 0 ? 'text-emerald-600' : 'text-rose-500'}>
+                        📅{datePts > 0 ? '+' : ''}{datePts}
+                      </span>
+                    )}
+                  </div>
+                  <span className="font-bold text-gray-800 text-sm">{partial} pts</span>
+                </div>
+              )
+            })}
+        </div>
+        <p className="text-xs text-gray-400 text-center mt-2">Tu puntuación parcial es visible solo para los demás</p>
+      </div>
 
       {/* All players */}
       <div className="space-y-3">
@@ -198,19 +227,6 @@ export default function RevealScreen({ roomCode, game, playerId, isHost, sortedP
             </div>
           )
         })}
-      </div>
-
-      {/* Token scoreboard */}
-      <div className="card">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Tokens actuales</p>
-        {[...sortedPlayers].sort((a, b) => (b.tokens ?? 0) - (a.tokens ?? 0)).map((p, i) => (
-          <div key={p.id} className="flex items-center gap-3 py-2 border-b border-rose-50 last:border-0">
-            <span className="text-lg">{['🥇','🥈','🥉'][i] ?? '▪️'}</span>
-            <span className="font-medium text-gray-700 flex-1">{p.name} {p.id === playerId && '(tú)'}</span>
-            <span className="font-bold text-gray-800">{p.tokens ?? 0} 🪙</span>
-          </div>
-        ))}
-        <p className="text-xs text-gray-400 text-center mt-2">Puntuación final = tokens + soulmate ×2</p>
       </div>
 
       {isHost ? (
