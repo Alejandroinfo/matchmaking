@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { startGame, updateSettings } from '../services/gameService'
 
+const ROLE_DIST = { 3:'1 amigo · 1 envidioso', 4:'1 amigo · 1 envidioso · 1 neutral', 5:'2 amigos · 2 envidiosos', 6:'2 amigos · 2 envidiosos · 1 neutral' }
 const LAST_SETTINGS_KEY = 'blindspot_last_settings'
 
 export default function LobbyScreen({ roomCode, game, playerId, isHost, sortedPlayers }) {
