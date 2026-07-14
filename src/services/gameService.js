@@ -1,7 +1,7 @@
 import { db } from '../firebase'
 import { doc, setDoc, updateDoc, getDoc, onSnapshot, serverTimestamp } from 'firebase/firestore'
 import { dealPersonalities, dealHands, computeCompatibility, recsPerPlayer } from '../logic/gameLogic'
-import { drawEvent, getEvent } from '../data/events'
+import { drawEvent } from '../data/events'
 import { resetUsedNames } from '../data/gameData'
 
 const TOKENS_PER_ROUND = 3
@@ -25,7 +25,7 @@ export async function createRoom(playerName) {
   await setDoc(doc(db, 'games', roomCode), {
     hostId: playerId,
     status: 'lobby',
-    settings: { totalRounds: 3, numOptions: 6, numAttributes: 4, pitchTime: 60, enableBetting: true, enableEvents: true, revealMode: 'matches' },
+    settings: { totalRounds: 3, numOptions: 6, numAttributes: 4, swipeTime: 0, enableBetting: true, enableEvents: true, revealMode: 'matches' },
     round: 0,
     phase: null,
     players: { [playerId]: { name: playerName, tokens: 0, score: 0, joinOrder: 0 } },
@@ -107,7 +107,7 @@ export async function startGame(roomCode) {
   await updateDoc(ref, {
     status: 'playing',
     round: 1,
-    phase: activeEvent?.skipPitch ? 'swipe' : 'recommendation',
+    phase: 'recommendation',
     personalities,
     hands,
     recsPerPlayer: rpp,
@@ -134,7 +134,7 @@ export async function submitRecommendations(roomCode, playerId, recommendations,
   const data = snap.data()
   const playerIds = Object.keys(data.players)
   const allSubmitted = playerIds.every(pid => data.recommendations?.[pid])
-  if (allSubmitted) await updateDoc(ref, { phase: 'pitch' })
+  if (allSubmitted) await updateDoc(ref, { phase: 'swipe' })
 }
 
 export async function submitSwipes(roomCode, playerId, swipeDecisions, selfDatesArr = []) {
@@ -307,8 +307,6 @@ export async function submitSwipes(roomCode, playerId, swipeDecisions, selfDates
       updatedTrack[pid] = (updatedTrack[pid] ?? 0) + trackGains[pid]
     })
 
-    const goToVote = data.settings?.enableVoting !== false
-
     const goToBet = data.settings?.enableBetting !== false
 
     await updateDoc(ref, {
@@ -350,7 +348,7 @@ export async function nextRound(roomCode) {
 
   await updateDoc(ref, {
     round: next,
-    phase: activeEvent?.skipPitch ? 'swipe' : 'recommendation',
+    phase: 'recommendation',
     hands,
     recsPerPlayer: rpp,
     players: updatedPlayers,

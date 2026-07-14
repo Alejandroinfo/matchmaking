@@ -31,18 +31,42 @@ export default function RecommendationScreen({
 
   function pickPostor(postor) {
     if (submitted) return
+    const uid = postor.uid
+
     if (rpp === 1) {
       setRecs(prev => ({ ...prev, [selectedRecipient]: postor }))
     } else {
-      // 3-player: first click = primary rec, second = secondary rec
-      if (!recs[selectedRecipient]) {
+      // Check if already used for any OTHER recipient
+      const usedByOther = Object.entries(recs).some(([pid, p]) => p?.uid === uid && pid !== selectedRecipient)
+        || Object.entries(recs2).some(([pid, p]) => p?.uid === uid && pid !== selectedRecipient)
+      if (usedByOther) return // can't assign same postor to two recipients
+
+      const isCurrentPrimary   = recs[selectedRecipient]?.uid === uid
+      const isCurrentSecondary = recs2[selectedRecipient]?.uid === uid
+
+      if (isCurrentPrimary) {
+        // Deselect primary, promote secondary to primary
+        setRecs(prev => {
+          const n = { ...prev }
+          if (recs2[selectedRecipient]) {
+            n[selectedRecipient] = recs2[selectedRecipient]
+            setRecs2(p2 => { const n2 = { ...p2 }; delete n2[selectedRecipient]; return n2 })
+          } else {
+            delete n[selectedRecipient]
+          }
+          return n
+        })
+      } else if (isCurrentSecondary) {
+        // Deselect secondary
+        setRecs2(prev => { const n = { ...prev }; delete n[selectedRecipient]; return n })
+      } else if (!recs[selectedRecipient]) {
         setRecs(prev => ({ ...prev, [selectedRecipient]: postor }))
       } else if (!recs2[selectedRecipient]) {
         setRecs2(prev => ({ ...prev, [selectedRecipient]: postor }))
       } else {
-        // Replace primary, clear secondary
+        // Both slots full — replace primary, clear secondary
         setRecs(prev => ({ ...prev, [selectedRecipient]: postor }))
-        setRecs2(prev => { const n = {...prev}; delete n[selectedRecipient]; return n })
+        setRecs2(prev => { const n = { ...prev }; delete n[selectedRecipient]; return n })
       }
     }
   }

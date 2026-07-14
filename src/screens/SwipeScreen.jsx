@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { submitSwipes } from '../services/gameService'
 import { ALL_ATTRIBUTES as ATTRIBUTES } from '../data/gameData'
 import { getMatchInfo } from '../logic/gameLogic'
@@ -16,6 +16,7 @@ export default function SwipeScreen({ roomCode, game, playerId, otherPlayers, my
   const event            = game.activeEvent      ?? null
   const myOwnTokens = game.players?.[playerId]?.ownTokens ?? 0
   const myEarned    = game.players?.[playerId]?.earnedTokens ?? 0
+  const swipeTime   = game.settings?.swipeTime ?? 0   // 0 = unlimited
 
   // All recs for me: primary + secondary (3-player rule)
   const recsForMe = otherPlayers.flatMap(p => {
@@ -35,10 +36,32 @@ export default function SwipeScreen({ roomCode, game, playerId, otherPlayers, my
   const remainingHand = (myHand ?? []).filter(p => !myUsedUids.has(p.uid))
 
   const [swipes, setSwipes]       = useState(mySwipes ?? {})
-  const [selfDates, setSelfDates] = useState([])  // array — multiple self-dates allowed
+  const [selfDates, setSelfDates] = useState([])
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading]     = useState(false)
   const [showRecs, setShowRecs]   = useState(false)
+  const [timeLeft, setTimeLeft]   = useState(swipeTime)
+  const submitRef = useRef(null)  // ref to avoid stale closure
+
+  // Timer: count down, auto-submit on expiry
+  useEffect(() => {
+    if (!swipeTime || submitted) return
+    if (timeLeft <= 0) {
+      // Auto-reject all undecided recs and submit
+      setSwipes(prev => {
+        const updated = { ...prev }
+        recsForMe.forEach(({ postor }) => {
+          if (updated[postor.uid] == null) updated[postor.uid] = false
+        })
+        return updated
+      })
+      // Submit after state update
+      setTimeout(() => submitRef.current?.(), 50)
+      return
+    }
+    const t = setTimeout(() => setTimeLeft(tl => tl - 1), 1000)
+    return () => clearTimeout(t)
+  }, [timeLeft, swipeTime, submitted])
 
   // Token accounting
   const acceptedRecs    = Object.values(swipes).filter(Boolean).length
@@ -71,7 +94,7 @@ export default function SwipeScreen({ roomCode, game, playerId, otherPlayers, my
   }
 
   async function handleSubmit() {
-    if (!allDecided || submitted) return
+    if (submitted) return
     setLoading(true)
     try {
       await submitSwipes(roomCode, playerId, swipes, selfDates)
@@ -80,6 +103,7 @@ export default function SwipeScreen({ roomCode, game, playerId, otherPlayers, my
       setLoading(false)
     }
   }
+  submitRef.current = handleSubmit
 
   const whoSubmitted = Object.keys(swipeDecisions).filter(pid => {
     const recsReceived = otherPlayers.filter(p => recommendations[p.id]?.[pid])
@@ -94,6 +118,19 @@ export default function SwipeScreen({ roomCode, game, playerId, otherPlayers, my
       <div className="text-center pt-2">
         <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Ronda {game.round} · Swipe</p>
         <h2 className="text-lg font-bold text-gray-800 mt-1">¿Con quién sales?</h2>
+        {swipeTime > 0 && !submitted && (
+          <div className={`inline-flex items-center gap-2 mt-2 px-4 py-1.5 rounded-full font-mono font-bold text-sm ${
+            timeLeft <= 30 ? 'bg-rose-100 text-rose-600 animate-pulse' :
+            timeLeft <= 60 ? 'bg-amber-100 text-amber-700' :
+            'bg-gray-100 text-gray-600'
+          }`}>
+            ⏱ {Math.floor(timeLeft/60)}:{String(timeLeft%60).padStart(2,'0')}
+            {timeLeft <= 30 && ' — ¡fecha límite!'}
+          </div>
+        )}
+        {swipeTime > 0 && !submitted && timeLeft <= 0 && (
+          <p className="text-rose-500 text-sm font-bold mt-1">Tiempo agotado — enviando automáticamente…</p>
+        )}
       </div>
 
       {/* Progress */}

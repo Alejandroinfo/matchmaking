@@ -39,7 +39,7 @@ export default function EndScreen({ game, playerId, sortedPlayers, myPersonality
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Clasificación final</p>
         {ranked.map((p, i) => {
           const soulmateR = soulmateResults[p.id]
-          const finalTokens = p.tokens ?? 0
+          const finalTokens = (p.ownTokens ?? 0) + (p.earnedTokens ?? 0)
           const soulmatePoints = soulmateR?.ownPoints ?? 0
           return (
             <div key={p.id} className={`py-2.5 border-b border-rose-50 last:border-0 ${p.id === playerId ? 'bg-rose-50 -mx-4 px-4 rounded-xl' : ''}`}>
@@ -82,7 +82,7 @@ export default function EndScreen({ game, playerId, sortedPlayers, myPersonality
                 {p.name.charAt(0)}
               </div>
               <h3 className="font-bold text-gray-800">{p.name} {isMe && '(tú)'}</h3>
-              <span className="ml-auto font-bold text-gray-700">{p.tokens ?? 0} 🪙</span>
+              <span className="ml-auto font-bold text-gray-700">{(p.ownTokens ?? 0) + (p.earnedTokens ?? 0)} 🪙</span>
             </div>
 
             {/* Real personality */}

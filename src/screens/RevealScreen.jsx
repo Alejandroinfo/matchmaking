@@ -1,5 +1,5 @@
 import { nextRound } from '../services/gameService'
-import { ATTR_ORDER, ATTR_EMOJI } from '../data/gameData'
+
 import EventBanner from '../components/EventBanner'
 
 export default function RevealScreen({ roomCode, game, playerId, isHost, sortedPlayers }) {
@@ -184,7 +184,7 @@ export default function RevealScreen({ roomCode, game, playerId, isHost, sortedP
                   <span className={`text-sm font-bold ${pTokenChange >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
                     {pTokenChange >= 0 ? '+' : ''}{pTokenChange} 🪙
                   </span>
-                  <span className="text-xs text-gray-500">→ {p.tokens ?? 0} total</span>
+                  
                 </div>
               </div>
 
