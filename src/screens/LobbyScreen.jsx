@@ -182,6 +182,22 @@ export default function LobbyScreen({ roomCode, game, playerId, isHost, sortedPl
                 </p>
               </div>
               <div>
+                <label className="text-sm text-gray-600 font-medium">Preguntas por ronda</label>
+                <div className="flex gap-2 mt-1">
+                  {[0, 2, 3, 4].map(n => (
+                    <button key={n} onClick={() => handleSetting('questionTokens', n)}
+                      className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                        settings.questionTokens === n ? 'bg-rose-500 text-white border-rose-500' : 'bg-white text-gray-600 border-rose-100 hover:border-rose-300'
+                      }`}>
+                      {n === 0 ? 'Sin preguntas' : n}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  {(settings.questionTokens ?? 3) === 0 ? 'Sin preguntas — modo clásico' : `${settings.questionTokens} preguntas binarias Sí/No por ronda, antes de aceptar/rechazar`}
+                </p>
+              </div>
+              <div>
                 <label className="text-sm text-gray-600 font-medium">Tiempo de swipe</label>
                 <div className="flex gap-2 mt-1 flex-wrap">
                   {[[0,'Sin límite'],[240,'4 min'],[300,'5 min'],[360,'6 min']].map(([v, label]) => (

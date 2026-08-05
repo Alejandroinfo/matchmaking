@@ -220,7 +220,7 @@ export default function RecommendationScreen({
             {roundHistory.length > 0 && (
               <MatchHistory roundHistory={roundHistory} playerId={playerId} players={game.players} />
             )}
-            <PersonalNotes roomCode={roomCode} playerId={playerId} />
+            <PersonalNotes roomCode={roomCode} playerId={playerId} game={game} />
             <button onClick={() => setShowAntagonists(v => !v)} className="btn-secondary w-full text-sm">
               {showAntagonists ? '▲ Ocultar ayuda' : '▼ Ver tabla de ayuda'}
             </button>
@@ -236,7 +236,7 @@ export default function RecommendationScreen({
             {roundHistory.length > 0 && (
               <MatchHistory roundHistory={roundHistory} playerId={playerId} players={game.players} />
             )}
-            <PersonalNotes roomCode={roomCode} playerId={playerId} />
+            <PersonalNotes roomCode={roomCode} playerId={playerId} game={game} />
             <button onClick={() => setShowAntagonists(v => !v)} className="btn-secondary w-full text-sm">
               {showAntagonists ? '▲ Ocultar ayuda' : '▼ Ver tabla de ayuda'}
             </button>

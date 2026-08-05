@@ -85,28 +85,18 @@ const LAST_NAMES = [
 const _usedNames = new Set()
 
 function uniqueName() {
-  // Try random combinations until we find an unused one
-  const firstPool = [...FIRST_NAMES]
-  const lastPool  = [...LAST_NAMES]
-  // Shuffle both to try random order
-  for (let i = firstPool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [firstPool[i], firstPool[j]] = [firstPool[j], firstPool[i]]
-  }
-  for (let i = lastPool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [lastPool[i], lastPool[j]] = [lastPool[j], lastPool[i]]
-  }
-  for (const first of firstPool) {
-    for (const last of lastPool) {
-      const name = `${first} ${last}`
-      if (!_usedNames.has(name)) {
-        _usedNames.add(name)
-        return name
-      }
+  // Simple random pick with retry — with 1682 possible combinations
+  // and max ~150 names per session, collision rate is very low
+  for (let attempt = 0; attempt < 500; attempt++) {
+    const first = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)]
+    const last  = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)]
+    const name  = `${first} ${last}`
+    if (!_usedNames.has(name)) {
+      _usedNames.add(name)
+      return name
     }
   }
-  // Pool exhausted — reset and start over
+  // Fallback: clear and start fresh
   _usedNames.clear()
   const first = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)]
   const last  = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)]
@@ -119,6 +109,7 @@ export function resetUsedNames() { _usedNames.clear() }
 
 export function generatePostor(numOptions = 6, numAttributes = 4) {
   const uid = Math.random().toString(36).substring(2, 9)
+    + Math.random().toString(36).substring(2, 9) // extra entropy
   const postor = { uid, name: uniqueName() }
   getAttributes(numAttributes).forEach(attr => {
     const opts = getAttrOptions(attr, numOptions)
@@ -128,5 +119,15 @@ export function generatePostor(numOptions = 6, numAttributes = 4) {
 }
 
 export function generatePostors(count, numOptions = 6, numAttributes = 4) {
-  return Array.from({ length: count }, () => generatePostor(numOptions, numAttributes))
+  const postors = []
+  const usedUids = new Set()
+  let attempts = 0
+  while (postors.length < count && attempts++ < count * 3) {
+    const p = generatePostor(numOptions, numAttributes)
+    if (!usedUids.has(p.uid)) {
+      usedUids.add(p.uid)
+      postors.push(p)
+    }
+  }
+  return postors
 }

@@ -25,7 +25,7 @@ export async function createRoom(playerName) {
   await setDoc(doc(db, 'games', roomCode), {
     hostId: playerId,
     status: 'lobby',
-    settings: { totalRounds: 3, numOptions: 6, numAttributes: 4, swipeTime: 0, enableBetting: true, enableEvents: true, revealMode: 'matches' },
+    settings: { totalRounds: 3, numOptions: 6, numAttributes: 4, swipeTime: 0, enableBetting: true, enableEvents: true, revealMode: 'matches', questionTokens: 3 },
     round: 0,
     phase: null,
     players: { [playerId]: { name: playerName, tokens: 0, score: 0, joinOrder: 0 } },
@@ -121,6 +121,7 @@ export async function startGame(roomCode) {
     roundHistory: [],
     matchmakingTrack: {},
     carryOverHands: {},
+    swipeQuestions: {},
   })
 }
 
@@ -360,6 +361,7 @@ export async function nextRound(roomCode) {
     roundResults: {},
     betDeclarations: {},
     carryOverHands: {},
+    swipeQuestions: {},
   })
 }
 

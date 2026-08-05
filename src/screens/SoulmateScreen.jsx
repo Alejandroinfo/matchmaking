@@ -60,7 +60,7 @@ export default function SoulmateScreen({ roomCode, game, playerId, sortedPlayers
       </div>
 
       {/* Personal notes for reference */}
-      <PersonalNotes roomCode={roomCode} playerId={playerId} />
+      <PersonalNotes roomCode={roomCode} playerId={playerId} game={game} />
 
       {(game.roundHistory ?? []).length > 0 && (
         <MatchHistory roundHistory={game.roundHistory} playerId={playerId} players={game.players} />
