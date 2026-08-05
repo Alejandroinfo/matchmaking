@@ -4,6 +4,7 @@ import { JoinScreen } from './HomeScreen'
 import LobbyScreen from './LobbyScreen'
 import RecommendationScreen from './RecommendationScreen'
 import SwipeScreen from './SwipeScreen'
+import DiscardScreen from './DiscardScreen'
 import BetScreen from './BetScreen'
 import RevealScreen from './RevealScreen'
 import SoulmateScreen from './SoulmateScreen'
@@ -98,6 +99,12 @@ export default function GameRoom() {
         <RevealScreen
           roomCode={roomCode} game={game} playerId={playerId}
           isHost={isHost} sortedPlayers={sortedPlayers}
+        />
+      )}
+      {(game.phase === 'discard_left' || game.phase === 'discard_right') && (
+        <DiscardScreen
+          roomCode={roomCode} game={game} playerId={playerId}
+          otherPlayers={otherPlayers} sortedPlayers={sortedPlayers}
         />
       )}
       {game.phase === 'bet' && (

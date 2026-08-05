@@ -25,7 +25,7 @@ export async function createRoom(playerName) {
   await setDoc(doc(db, 'games', roomCode), {
     hostId: playerId,
     status: 'lobby',
-    settings: { totalRounds: 3, numOptions: 6, numAttributes: 4, swipeTime: 0, enableBetting: true, enableEvents: true, revealMode: 'matches', questionTokens: 3 },
+    settings: { totalRounds: 3, numOptions: 6, numAttributes: 4, enableBetting: false, enableEvents: true, revealMode: 'matches', questionTokens: 3 },
     round: 0,
     phase: null,
     players: { [playerId]: { name: playerName, tokens: 0, score: 0, joinOrder: 0 } },
@@ -122,6 +122,7 @@ export async function startGame(roomCode) {
     matchmakingTrack: {},
     carryOverHands: {},
     swipeQuestions: {},
+    discardSelections: {},
   })
 }
 
@@ -216,12 +217,16 @@ export async function submitSwipes(roomCode, playerId, swipeDecisions, selfDates
     const earnedTokenChanges = {}
     playerIds.forEach(pid => { ownTokenChanges[pid] = 0; earnedTokenChanges[pid] = 0 })
 
+    // Apply token changes + accumulate date points (progressive: round 1=x1, 2=x2, 3=x3)
+    const roundMultiplier = data.round ?? 1
+
     playerIds.forEach(pid => {
       roundResults[pid].acceptedDates.forEach((d, idx) => {
         const isFree = event?.allDatesFree || (event?.firstDateFree && idx === 0)
         if (!isFree) {
           ownTokenChanges[pid] -= 1
-          if (d.fromId) earnedTokenChanges[d.fromId] += 1
+          // Earned tokens scale with round — recommending well in later rounds is worth more
+          if (d.fromId) earnedTokenChanges[d.fromId] += roundMultiplier
         }
       })
     })
@@ -243,7 +248,6 @@ export async function submitSwipes(roomCode, playerId, swipeDecisions, selfDates
           .forEach(pid => { earnedTokenChanges[pid] += 1 })
     }
 
-    // Apply token changes + accumulate date points
     const updatedPlayers = { ...data.players }
     playerIds.forEach(pid => {
       const datePointsThisRound = roundResults[pid].acceptedDates
@@ -252,7 +256,7 @@ export async function submitSwipes(roomCode, playerId, swipeDecisions, selfDates
         ...updatedPlayers[pid],
         ownTokens: Math.max(0, (updatedPlayers[pid].ownTokens ?? 0) + ownTokenChanges[pid]),
         earnedTokens: (updatedPlayers[pid].earnedTokens ?? 0) + earnedTokenChanges[pid],
-        datePoints: (updatedPlayers[pid].datePoints ?? 0) + datePointsThisRound,
+        datePoints: (updatedPlayers[pid].datePoints ?? 0) + datePointsThisRound * roundMultiplier,
       }
     })
 
@@ -310,8 +314,12 @@ export async function submitSwipes(roomCode, playerId, swipeDecisions, selfDates
 
     const goToBet = data.settings?.enableBetting !== false
 
+    // From round 2 onwards: go through discard miniphases before reveal
+    const goToDiscard = (data.round ?? 1) >= 2
+
     await updateDoc(ref, {
-      phase: goToBet ? 'bet' : 'reveal',
+      phase: goToDiscard ? 'discard_left' : (goToBet ? 'bet' : 'reveal'),
+      discardSelections: {},
       roundResults,
       players: updatedPlayers,
       roundHistory,
@@ -365,6 +373,69 @@ export async function nextRound(roomCode) {
   })
 }
 
+export async function submitDiscardPhase(roomCode) {
+  const ref = doc(db, 'games', roomCode)
+  const snap = await getDoc(ref)
+  const data = snap.data()
+  const playerIds = Object.keys(data.players)
+  const phase = data.phase  // 'discard_left' or 'discard_right'
+  const selections = data.discardSelections ?? {}
+
+  // Check all players have decided
+  const allDone = playerIds.every(pid => selections[pid] != null)
+  if (!allDone) return
+
+  const round = data.round ?? 1
+  const roundMultiplier = round
+
+  // Process accepted discard dates — add to roundResults
+  const updatedPlayers = { ...data.players }
+  const updatedRoundResults = { ...(data.roundResults ?? {}) }
+
+  playerIds.forEach(pid => {
+    const sel = selections[pid]
+    if (!sel || sel.skipped || !sel.postor) return
+
+    const personality = data.personalities?.[pid] ?? []
+    const { ownPoints, matches, matchedAttrs } = computeCompatibility(personality, sel.postor)
+
+    // Cost 1 own token, no earned tokens for anyone
+    updatedPlayers[pid] = {
+      ...updatedPlayers[pid],
+      ownTokens: Math.max(0, (updatedPlayers[pid].ownTokens ?? 0) - 1),
+      datePoints: (updatedPlayers[pid].datePoints ?? 0) + ownPoints * roundMultiplier,
+    }
+
+    // Append to roundResults for history
+    const existing = updatedRoundResults[pid] ?? { acceptedDates: [] }
+    updatedRoundResults[pid] = {
+      ...existing,
+      acceptedDates: [
+        ...existing.acceptedDates,
+        { postor: sel.postor, fromId: null, ownPoints, matches, matchedAttrs, fromDiscard: true }
+      ]
+    }
+  })
+
+  const goToBet = data.settings?.enableBetting !== false
+  const nextPhase = phase === 'discard_left'
+    ? 'discard_right'
+    : (goToBet ? 'bet' : 'reveal')
+
+  await updateDoc(ref, {
+    phase: nextPhase,
+    discardSelections: {},
+    players: updatedPlayers,
+    roundResults: updatedRoundResults,
+  })
+}
+
+export async function advanceDiscardPhase(roomCode) {
+  // Called by host when all players ready
+  const ref = doc(db, 'games', roomCode)
+  await submitDiscardPhase(roomCode)
+}
+
 export async function submitSoulmateSelection(roomCode, playerId, description) {
   const ref = doc(db, 'games', roomCode)
   await updateDoc(ref, { [`soulmateSelections.${playerId}`]: description })
@@ -381,26 +452,20 @@ export async function submitSoulmateSelection(roomCode, playerId, description) {
         data.personalities[pid],
         data.soulmateSelections[pid]
       )
-      soulmateResults[pid] = { ownPoints: ownPoints * 2, matches, description: data.soulmateSelections[pid] }
+      soulmateResults[pid] = { ownPoints, matches, description: data.soulmateSelections[pid] }
     })
 
-    // Award matchmaking track bonus: top scorer(s) get +3
-    const track = data.matchmakingTrack ?? {}
-    const maxTrack = playerIds.length > 0 ? Math.max(...playerIds.map(pid => track[pid] ?? 0)) : 0
-    const trackWinners = maxTrack > 0 ? playerIds.filter(pid => (track[pid] ?? 0) === maxTrack) : []
-
-    // Final score = remaining tokens + soulmate points + matchmaking bonus
+    // Final score = remaining tokens + soulmate (x4) + datePoints
     const updatedPlayers = { ...data.players }
     playerIds.forEach(pid => {
-      const ownTokens    = updatedPlayers[pid].ownTokens ?? 0
-      const earnedTokens = updatedPlayers[pid].earnedTokens ?? 0
-      const soulmatePoints = soulmateResults[pid].ownPoints
-      const matchmakingBonus = trackWinners.includes(pid) ? 3 : 0
-      const datePoints = updatedPlayers[pid].datePoints ?? 0
+      const ownTokens      = updatedPlayers[pid].ownTokens ?? 0
+      const earnedTokens   = updatedPlayers[pid].earnedTokens ?? 0
+      const soulmatePoints = (soulmateResults[pid].ownPoints ?? 0) * 4
+      const datePoints     = updatedPlayers[pid].datePoints ?? 0
       updatedPlayers[pid] = {
         ...updatedPlayers[pid],
-        score: ownTokens + earnedTokens + soulmatePoints + matchmakingBonus + datePoints,
-        matchmakingBonus,
+        soulmateRawPoints: soulmateResults[pid].ownPoints ?? 0,
+        score: ownTokens + earnedTokens + soulmatePoints + datePoints,
       }
     })
 
@@ -409,7 +474,6 @@ export async function submitSoulmateSelection(roomCode, playerId, description) {
       phase: 'end',
       soulmateResults,
       players: updatedPlayers,
-      matchmakingWinners: trackWinners,
     })
   }
 }

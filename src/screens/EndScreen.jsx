@@ -51,10 +51,10 @@ export default function EndScreen({ game, playerId, sortedPlayers, myPersonality
               <div className="flex gap-3 mt-1 ml-11 text-xs text-gray-500 flex-wrap">
                 <span>🪙 {p.ownTokens ?? 0} propios</span>
                 {(p.earnedTokens ?? 0) > 0 && <span>+ ⭐ {p.earnedTokens} ganados</span>}
-                <span>+ 💞 {soulmatePoints > 0 ? '+' : ''}{soulmatePoints} soulmate</span>
+                <span>+ 💞 {(p.soulmateRawPoints ?? soulmatePoints) > 0 ? '+' : ''}{p.soulmateRawPoints ?? soulmatePoints} ×4 soulmate</span>
                 {(p.datePoints ?? 0) !== 0 && (
                   <span className={(p.datePoints ?? 0) >= 0 ? 'text-emerald-600' : 'text-rose-500'}>
-                    + 📅 {(p.datePoints ?? 0) > 0 ? '+' : ''}{p.datePoints} citas
+                    + 📅 {(p.datePoints ?? 0) > 0 ? '+' : ''}{p.datePoints} citas (×ronda)
                   </span>
                 )}
                 {matchmakingWinners.includes(p.id) && <span className="text-rose-500">+ 🏹 +3 (líder track)</span>}

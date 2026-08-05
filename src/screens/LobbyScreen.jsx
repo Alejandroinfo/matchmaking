@@ -103,17 +103,6 @@ export default function LobbyScreen({ roomCode, game, playerId, isHost, sortedPl
             </div>
             <div className="space-y-3">
               <div>
-                <label className="text-sm text-gray-600 font-medium">Rondas</label>
-                <div className="flex gap-2 mt-1">
-                  {[2, 3, 4, 5].map(n => (
-                    <button key={n} onClick={() => handleSetting('totalRounds', n)}
-                      className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${
-                        settings.totalRounds === n ? 'bg-rose-500 text-white border-rose-500' : 'bg-white text-gray-600 border-rose-100 hover:border-rose-300'
-                      }`}>{n}</button>
-                  ))}
-                </div>
-              </div>
-              <div>
                 <label className="text-sm text-gray-600 font-medium">Eventos de ronda</label>
                 <div className="flex gap-2 mt-1">
                   {[true, false].map(v => (
@@ -148,19 +137,55 @@ export default function LobbyScreen({ roomCode, game, playerId, isHost, sortedPl
                 </p>
               </div>
               <div>
-                <label className="text-sm text-gray-600 font-medium">Apuesta de matches</label>
+                <label className="text-sm text-gray-600 font-medium">Atributos por jugador</label>
                 <div className="flex gap-2 mt-1">
-                  {[true, false].map(v => (
-                    <button key={String(v)} onClick={() => handleSetting('enableBetting', v)}
+                  {[4, 5, 6].map(n => (
+                    <button key={n} onClick={() => handleSetting('numAttributes', n)}
                       className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${
-                        settings.enableBetting === v ? 'bg-rose-500 text-white border-rose-500' : 'bg-white text-gray-600 border-rose-100 hover:border-rose-300'
+                        settings.numAttributes === n ? 'bg-rose-500 text-white border-rose-500' : 'bg-white text-gray-600 border-rose-100 hover:border-rose-300'
                       }`}>
-                      {v ? '✓ Activada' : '✗ Desactivada'}
+                      {n} atributos
                     </button>
                   ))}
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
-                  {settings.enableBetting ? 'Declara tus matches antes del reveal: acierta y recuperas 1🪙 de los tuyos' : 'Sin apuesta — pasa directo al reveal'}
+                  {settings.numAttributes === 6 ? '6 atributos (3,3,2,2,1,1) — añade Humor. Experimental' :
+                   settings.numAttributes === 5 ? 'Añade Intereses (Arte↔Ciencia, Naturaleza↔Ciudad, Música↔Silencio)' :
+                   '4 atributos — configuración base'}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm text-gray-600 font-medium">Preguntas por ronda</label>
+                <div className="flex gap-2 mt-1">
+                  {[0, 2, 3, 4].map(n => (
+                    <button key={n} onClick={() => handleSetting('questionTokens', n)}
+                      className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                        settings.questionTokens === n ? 'bg-rose-500 text-white border-rose-500' : 'bg-white text-gray-600 border-rose-100 hover:border-rose-300'
+                      }`}>
+                      {n === 0 ? 'Sin preguntas' : n}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  {(settings.questionTokens ?? 3) === 0 ? 'Sin preguntas — modo clásico' : `${settings.questionTokens} preguntas Sí/No por ronda antes de decidir`}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm text-gray-600 font-medium">Modo de reveal de citas</label>
+                <div className="flex gap-2 mt-1">
+                  {[['matches','Mostrar matches'], ['points','Mostrar puntos']].map(([v, label]) => (
+                    <button key={v} onClick={() => handleSetting('revealMode', v)}
+                      className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                        settings.revealMode === v ? 'bg-rose-500 text-white border-rose-500' : 'bg-white text-gray-600 border-rose-100 hover:border-rose-300'
+                      }`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  {settings.revealMode === 'points'
+                    ? 'Revela el total de puntos de citas, sin mostrar matches individuales'
+                    : 'Muestra matches totales, oculta puntos (default)'}
                 </p>
               </div>
               <div>
@@ -195,22 +220,6 @@ export default function LobbyScreen({ roomCode, game, playerId, isHost, sortedPl
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
                   {(settings.questionTokens ?? 3) === 0 ? 'Sin preguntas — modo clásico' : `${settings.questionTokens} preguntas binarias Sí/No por ronda, antes de aceptar/rechazar`}
-                </p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-600 font-medium">Tiempo de swipe</label>
-                <div className="flex gap-2 mt-1 flex-wrap">
-                  {[[0,'Sin límite'],[240,'4 min'],[300,'5 min'],[360,'6 min']].map(([v, label]) => (
-                    <button key={v} onClick={() => handleSetting('swipeTime', v)}
-                      className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all min-w-0 ${
-                        settings.swipeTime === v ? 'bg-rose-500 text-white border-rose-500' : 'bg-white text-gray-600 border-rose-100 hover:border-rose-300'
-                      }`}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-xs text-gray-400 mt-1">
-                  {settings.swipeTime === 0 ? 'Sin límite — se avanza cuando todos confirman' : `${settings.swipeTime/60} minutos para decidir — recs no decididas se rechazan automáticamente`}
                 </p>
               </div>
               <div>
