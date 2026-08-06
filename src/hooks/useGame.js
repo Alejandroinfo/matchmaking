@@ -1,19 +1,40 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { subscribeToGame, getOrCreatePlayerId } from '../services/gameService'
+import { enableNetwork } from 'firebase/firestore'
+import { db } from '../firebase'
 
 export function useGame(roomCode) {
   const [game, setGame] = useState(null)
   const [loading, setLoading] = useState(true)
   const playerId = getOrCreatePlayerId()
+  const unsubRef = useRef(null)
 
-  useEffect(() => {
+  function subscribe() {
     if (!roomCode) return
-    setLoading(true)
-    const unsub = subscribeToGame(roomCode, data => {
+    if (unsubRef.current) unsubRef.current()
+    unsubRef.current = subscribeToGame(roomCode, data => {
       setGame(data)
       setLoading(false)
     })
-    return () => unsub()
+  }
+
+  useEffect(() => {
+    setLoading(true)
+    subscribe()
+    return () => { if (unsubRef.current) unsubRef.current() }
+  }, [roomCode])
+
+  // Re-enable Firestore network and resubscribe when tab becomes visible
+  useEffect(() => {
+    function onVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        enableNetwork(db)
+          .then(() => subscribe())
+          .catch(() => subscribe())
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
   }, [roomCode])
 
   const players = game?.players ?? {}

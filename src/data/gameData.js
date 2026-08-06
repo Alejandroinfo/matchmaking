@@ -65,6 +65,24 @@ export function getAttrOptions(attr, numOptions = 6) {
 export const ATTR_ORDER = ALL_ATTRIBUTES.map(a => a.name)
 export const ATTR_EMOJI = Object.fromEntries(ALL_ATTRIBUTES.map(a => [a.name, a.emoji]))
 
+export const ATTR_COLOR = {
+  'Pasatiempo':    '#e74c3c',
+  'Personalidad':  '#2980b9',
+  'Estilo de vida':'#27ae60',
+  'Valores':       '#8e44ad',
+  'Intereses':     '#e67e22',
+  'Humor':         '#e91e8c',
+}
+
+export const VALUE_EMOJI = {
+  'Senderismo':'🥾','Videojuegos':'🎮','Cocina':'🍳','Comida a domicilio':'🛵',
+  'Extrovertido':'🎉','Introvertido':'📚','Aventurero':'🧭','Cauteloso':'🛡️',
+  'Madrugador':'🌅','Noctámbulo':'🌙','Deportista':'⚽','Sedentario':'🛋️',
+  'Ambicioso':'🚀','Conformista':'☕','Familiar':'🏠','Independiente':'🦅',
+  'Arte':'🎨','Ciencia':'🔬','Naturaleza':'🌿','Ciudad':'🏙️',
+  'Sarcástico':'😏','Literal':'📐','Oscuro':'🖤','Ligero':'☀️',
+}
+
 // Name pools
 const FIRST_NAMES = [
   'Alex','Sam','Jordan','Taylor','Morgan','Casey','Riley','Avery','Quinn','Skyler',
